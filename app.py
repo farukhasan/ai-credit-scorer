@@ -8,160 +8,257 @@ from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.metrics import roc_auc_score, roc_curve, confusion_matrix, classification_report, f1_score
 import matplotlib.pyplot as plt
 import seaborn as sns
-import requests
-import json
-import os
-from datetime import datetime
 import warnings
 warnings.filterwarnings('ignore')
 
 # Set page config
 st.set_page_config(
-    page_title="Bangladesh Credit Scorer",
+    page_title="CreditIQ - Bangladesh Credit Scorer",
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="collapsed",
+    page_icon="💳"
 )
 
-# Add spacing for title
-st.write('<style>div.block-container{padding-top:1rem;}</style>', unsafe_allow_html=True)
-
-# Custom CSS for spacing and design
-st.write('''
-    <style>
-        div.block-container {padding-top:2rem;}
-        div[data-testid="stSidebarContent"] {padding-top: 3rem;}
-        div.st-emotion-cache-1v0mbdj.e115fcil1 {margin-top: 1.5rem;}
-        .st-emotion-cache-pkbazv {row-gap: 1em;}
-        .stMarkdown {padding-top: 0.5rem;}
-        .css-1544g2n {margin-top: 0;}
-    </style>
-''', unsafe_allow_html=True)
-
-# Custom CSS for white background and minimal design
+# Enhanced Custom CSS for consistent UI
 st.markdown("""
     <style>
+    /* Main container styling */
     .stApp {
-        background-color: white !important;
-        padding: 0 !important;
-        margin: 0 !important;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
     }
-    .css-1d391kg {
-        background-color: white !important;
-        padding: 0 !important;
-        margin: 0 !important;
+    
+    .main > div {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        border-radius: 20px;
+        margin: 20px;
+        padding: 30px;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.1);
     }
-    .main {
-        margin-top: -4rem !important;
+    
+    /* Typography */
+    h1 {
+        background: linear-gradient(45deg, #667eea, #764ba2);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        text-align: center;
+        font-size: 3rem !important;
+        margin-bottom: 0.5rem !important;
+        font-weight: 800 !important;
     }
-    .stTabs [data-baseweb="tab-list"] {
-        background-color: white !important;
-        padding: 0 !important;
+    
+    h2, h3 {
+        color: #2c3e50;
+        font-weight: 600;
+        margin-top: 2rem !important;
     }
-    .stTabs [data-baseweb="tab"] {
-        background-color: white !important;
-        padding: 0 !important;
-    }
-    /* Remove all unnecessary padding */
-    .block-container {
-        padding-top: 1rem !important;
-        padding-bottom: 0 !important;
-        padding-left: 1rem !important;
-        padding-right: 1rem !important;
-    }
-    /* Remove white space between components */
-    .element-container {
-        margin: 0 !important;
-        padding: 0 !important;
-    }
-    h1, h2, h3, p, label, .stMarkdown {
-        color: #000000 !important;
-    }
-    div[data-testid="stMetricValue"] {
-        color: #000000 !important;
-    }
-    .stMarkdown {
+    
+    .subtitle {
+        text-align: center;
+        color: #7f8c8d;
+        font-size: 1.2rem;
+        margin-bottom: 2rem;
         font-weight: 500;
     }
+    
+    /* Card styling */
+    .info-card {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 15px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        margin-bottom: 1.5rem;
+        border: 1px solid #e8ecf0;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    
+    .info-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+    }
+    
+    .metric-card {
+        background: linear-gradient(135deg, #667eea22, #764ba222);
+        padding: 1.5rem;
+        border-radius: 15px;
+        text-align: center;
+        margin: 1rem 0;
+        border: 2px solid transparent;
+        background-clip: padding-box;
+    }
+    
+    .result-card {
+        background: white;
+        padding: 2rem;
+        border-radius: 20px;
+        text-align: center;
+        margin: 2rem 0;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        border: 3px solid;
+    }
+    
     /* Button styling */
     .stButton > button {
+        background: linear-gradient(45deg, #667eea, #764ba2);
         color: white;
-        background-color: #1e88e5;
-        border-radius: 8px;
+        border: none;
+        border-radius: 25px;
         padding: 12px 30px;
         font-weight: 600;
         font-size: 16px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        margin: 10px 0;
         width: 100%;
         transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
     }
+    
     .stButton > button:hover {
-        background-color: #1565c0;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-        transform: translateY(-1px);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        background: linear-gradient(45deg, #5a67d8, #6b46c1);
     }
-    /* Container styling */
-    div.element-container {
-        padding-bottom: 1rem;
+    
+    /* Input styling */
+    .stSelectbox > div > div {
+        border-radius: 10px;
+        border: 2px solid #e8ecf0;
+        transition: border-color 0.2s ease;
     }
-    /* Remove black spaces */
-    .main .block-container {
-        padding-top: 2rem;
-        padding-bottom: 0;
-        max-width: 1200px;
+    
+    .stSelectbox > div > div:focus-within {
+        border-color: #667eea;
+        box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
     }
-    /* Metric styling */
-    div[data-testid="stMetricValue"] {
-        font-size: 24px;
-        font-weight: 600;
+    
+    .stNumberInput > div > div > input {
+        border-radius: 10px;
+        border: 2px solid #e8ecf0;
+        transition: border-color 0.2s ease;
     }
+    
+    .stNumberInput > div > div > input:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+    }
+    
     /* Tab styling */
-    .stTabs [data-baseweb="tab"] {
-        font-weight: 500;
-    }
-    /* Card styling */
-    div.element-container div.stMarkdown {
-        background-color: transparent;
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+        background: transparent;
         padding: 0;
-        margin: 0;
     }
-    /* Custom card class */
-    .custom-card {
-        background-color: #ffffff;
-        padding: 1rem;
-        border-radius: 8px;
-        border: 1px solid #eee;
-        margin-bottom: 1rem;
+    
+    .stTabs [data-baseweb="tab"] {
+        background: white;
+        border-radius: 15px;
+        padding: 12px 24px;
+        font-weight: 600;
+        border: 2px solid #e8ecf0;
+        transition: all 0.2s ease;
+    }
+    
+    .stTabs [aria-selected="true"] {
+        background: linear-gradient(45deg, #667eea, #764ba2);
+        color: white !important;
+        border-color: transparent;
+    }
+    
+    /* Progress bar styling */
+    .progress-bar {
+        background: #e8ecf0;
+        height: 8px;
+        border-radius: 4px;
+        overflow: hidden;
+        margin: 8px 0;
+    }
+    
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(45deg, #667eea, #764ba2);
+        border-radius: 4px;
+        transition: width 0.3s ease;
+    }
+    
+    /* Status indicators */
+    .status-approve { 
+        border-color: #27ae60; 
+        background: linear-gradient(135deg, #27ae6022, #2ecc7122);
+    }
+    .status-review { 
+        border-color: #f39c12; 
+        background: linear-gradient(135deg, #f39c1222, #e67e2222);
+    }
+    .status-decline { 
+        border-color: #e74c3c; 
+        background: linear-gradient(135deg, #e74c3c22, #c0392b22);
+    }
+    
+    /* Responsive design */
+    @media (max-width: 768px) {
+        .main > div {
+            margin: 10px;
+            padding: 20px;
+        }
+        
+        h1 {
+            font-size: 2rem !important;
+        }
+    }
+    
+    /* Remove default streamlit styling */
+    .css-1d391kg {
+        padding: 0;
+    }
+    
+    .block-container {
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+    }
+    
+    /* Loading animation */
+    .loading-spinner {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 3px solid rgba(102, 126, 234, 0.3);
+        border-radius: 50%;
+        border-top-color: #667eea;
+        animation: spin 1s ease-in-out infinite;
+    }
+    
+    @keyframes spin {
+        to { transform: rotate(360deg); }
     }
     </style>
 """, unsafe_allow_html=True)
 
-# Title and subtitle
-st.title("CreditIQ")
-st.markdown("##### Advanced Credit Risk Intelligence System")
+# Header
+st.markdown('<h1>CreditIQ</h1>', unsafe_allow_html=True)
+st.markdown('<p class="subtitle">Advanced Credit Risk Intelligence System for Bangladesh</p>', unsafe_allow_html=True)
 st.markdown("---")
 
 # Initialize session state
 if 'model_trained' not in st.session_state:
     st.session_state.model_trained = False
 
-# Use API key from secrets
-api_key = st.secrets["AI_API_KEY"]
-api_choice = st.secrets.get("AI_MODEL", "OpenAI GPT")
+# Simulated API key (in real implementation, use st.secrets)
+api_key = "demo_key"  # Replace with actual API integration
+api_choice = "OpenAI GPT"
 
 # Generate synthetic Bangladesh context data
 @st.cache_data
-def generate_bangladesh_data(n_samples=1000):
+def generate_bangladesh_data(n_samples=1500):
+    """Generate synthetic credit data for Bangladesh context"""
     np.random.seed(42)
     
     data = pd.DataFrame({
-        # Demographic features (Bangladesh context)
+        # Demographic features
         'age': np.random.randint(22, 65, n_samples),
         'monthly_income_bdt': np.random.exponential(35000, n_samples) + 15000,
         'family_members': np.random.poisson(4, n_samples) + 1,
         'education_level': np.random.choice([1, 2, 3, 4, 5], n_samples, p=[0.2, 0.25, 0.3, 0.15, 0.1]),
         
-        # Location (Division)
+        # Location
         'division': np.random.choice([1, 2, 3, 4, 5, 6, 7, 8], n_samples),
         'urban_rural': np.random.choice([0, 1], n_samples, p=[0.65, 0.35]),
         
@@ -187,13 +284,13 @@ def generate_bangladesh_data(n_samples=1000):
         'previous_loan_default': np.random.choice([0, 1], n_samples, p=[0.85, 0.15]),
         'utility_bill_delays': np.random.poisson(0.3, n_samples),
         
-        # Social features (Bangladesh specific)
+        # Social features
         'guarantor_available': np.random.choice([0, 1], n_samples, p=[0.4, 0.6]),
         'social_capital_score': np.random.beta(5, 2, n_samples),
         'religious_donations_regular': np.random.choice([0, 1], n_samples, p=[0.3, 0.7]),
     })
     
-    # Create target variable with logical relationships
+    # Create target variable
     default_prob = (
         (data['previous_loan_default'] * 0.3) +
         (data['loan_amount_bdt'] / data['monthly_income_bdt'] / 100) +
@@ -209,11 +306,8 @@ def generate_bangladesh_data(n_samples=1000):
     
     return data
 
-# Load or generate data
-data = generate_bangladesh_data(1500)
-
-# Feature engineering
 def create_features(df):
+    """Create engineered features"""
     df = df.copy()
     df['debt_to_income_ratio'] = df['loan_amount_bdt'] / (df['monthly_income_bdt'] * 12)
     df['revenue_per_employee'] = df['monthly_revenue_bdt'] / (df['employees'] + 1)
@@ -222,10 +316,11 @@ def create_features(df):
     df['credit_risk_score'] = (df['previous_loan_default'] * 2 + df['utility_bill_delays']) / 3
     return df
 
-# Prepare data
+# Load and prepare data
+data = generate_bangladesh_data(1500)
 data = create_features(data)
 
-# Define features and target
+# Define features
 feature_columns = [
     'age', 'monthly_income_bdt', 'family_members', 'education_level',
     'division', 'urban_rural', 'loan_amount_bdt', 'loan_term_months',
@@ -242,33 +337,28 @@ feature_columns = [
 X = data[feature_columns]
 y = data['default']
 
-# Split data
+# Split and scale data
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
-
-# Scale features
 scaler = StandardScaler()
 X_train_scaled = scaler.fit_transform(X_train)
 X_test_scaled = scaler.transform(X_test)
 
-# Train models
 @st.cache_resource
 def train_models():
-    # Model 1: Logistic Regression
+    """Train ensemble of ML models"""
     lr_model = LogisticRegression(random_state=42, max_iter=1000)
     lr_model.fit(X_train_scaled, y_train)
     
-    # Model 2: Random Forest
     rf_model = RandomForestClassifier(n_estimators=100, random_state=42, max_depth=10)
     rf_model.fit(X_train_scaled, y_train)
     
-    # Model 3: Gradient Boosting
     gb_model = GradientBoostingClassifier(n_estimators=100, random_state=42, max_depth=5)
     gb_model.fit(X_train_scaled, y_train)
     
     return lr_model, rf_model, gb_model
 
-# Ensemble prediction
 def ensemble_predict(models, X, weights=[0.3, 0.35, 0.35]):
+    """Make ensemble predictions"""
     predictions = []
     for model, weight in zip(models, weights):
         pred_proba = model.predict_proba(X)[:, 1]
@@ -277,234 +367,232 @@ def ensemble_predict(models, X, weights=[0.3, 0.35, 0.35]):
     ensemble_pred = np.sum(predictions, axis=0)
     return ensemble_pred
 
-# Calculate credit score (1-10)
 def calculate_credit_score(default_prob):
+    """Convert default probability to credit score (1-10)"""
     score = 10 - (default_prob * 10)
     return max(1, min(10, round(score, 1)))
 
-# Get decision
 def get_decision(score):
+    """Get loan decision based on score"""
     if score >= 7:
-        return "APPROVE", "#1a5d1a"  # Dark green
+        return "APPROVE", "#27ae60", "status-approve"
     elif score >= 4:
-        return "REVIEW REQUIRED", "#8b4513"  # Saddle brown
+        return "REVIEW REQUIRED", "#f39c12", "status-review"
     else:
-        return "DECLINE", "#7c0a02"  # Dark red
+        return "DECLINE", "#e74c3c", "status-decline"
 
-# Get improvement suggestions
-def get_improvement_suggestion(feature):
-    suggestions = {
-        'Monthly Income Bdt': 'Consider additional income sources or business expansion opportunities',
-        'Debt To Income Ratio': 'Work on reducing existing debt or increasing income to improve ratio',
-        'Bank Transaction Sales Ratio': 'Increase formal banking transactions for business operations',
-        'Years In Business': 'Build longer business operation history and maintain proper records',
-        'Bank Account Years': 'Maintain active banking relationships and regular transactions',
-        'Previous Loan Default': 'Clear any outstanding defaults and maintain timely payments',
-        'Mobile Banking User': 'Adopt digital banking for better transaction tracking',
-        'Credit Risk Score': 'Improve credit history through timely bill payments',
-        'Monthly Revenue Bdt': 'Focus on increasing business revenue and maintaining records',
-        'Guarantor Available': 'Secure a creditworthy guarantor for the loan',
-        'Social Capital Score': 'Build stronger business relationships in the community',
-        'Utility Bill Delays': 'Ensure timely payment of all utility bills'
-    }
-    return suggestions.get(feature, 'Focus on improving this metric based on industry standards')
+def display_result_card(decision, score, color, css_class, loan_amount=None, recommended_amount=None):
+    """Display standardized result card"""
+    recommendation_text = ""
+    if loan_amount and recommended_amount and recommended_amount != loan_amount:
+        recommendation_text = f"<div style='margin-top: 15px; font-size: 14px; color: #7f8c8d;'>Recommended Amount: ৳{recommended_amount:,.0f}</div>"
+    
+    st.markdown(f"""
+    <div class='result-card {css_class}' style='border-color: {color};'>
+        <h2 style='color: {color}; margin: 0; font-size: 2rem;'>{decision}</h2>
+        <div style='font-size: 1.5rem; margin: 15px 0; color: #2c3e50;'>
+            Credit Score: <strong>{score}/10</strong>
+        </div>
+        {recommendation_text}
+    </div>
+    """, unsafe_allow_html=True)
 
-# ML Explainer
-def explain_ml_prediction(models, X_sample, feature_names, scaler):
-    # Get feature contributions (simplified SHAP-like approach)
-    lr_model = models[0]
-    coefficients = lr_model.coef_[0]
+def display_score_breakdown(ml_score, ai_score=None, ensemble_prob=None):
+    """Display score breakdown in cards"""
+    col1, col2, col3 = st.columns(3)
     
-    X_scaled = scaler.transform(X_sample.reshape(1, -1))[0]
-    contributions = coefficients * X_scaled
+    with col1:
+        st.markdown(f"""
+        <div class='metric-card'>
+            <h4 style='margin: 0; color: #2c3e50;'>ML Score</h4>
+            <div style='font-size: 2rem; font-weight: bold; color: #667eea;'>{ml_score}/10</div>
+            <div style='font-size: 0.9rem; color: #7f8c8d;'>Machine Learning</div>
+        </div>
+        """, unsafe_allow_html=True)
     
-    # Get top positive and negative factors
-    factor_df = pd.DataFrame({
-        'Feature': feature_names,
-        'Contribution': contributions
-    })
+    with col2:
+        if ai_score is not None:
+            st.markdown(f"""
+            <div class='metric-card'>
+                <h4 style='margin: 0; color: #2c3e50;'>AI Score</h4>
+                <div style='font-size: 2rem; font-weight: bold; color: #764ba2;'>{ai_score:.1f}/10</div>
+                <div style='font-size: 0.9rem; color: #7f8c8d;'>AI Assessment</div>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown(f"""
+            <div class='metric-card'>
+                <h4 style='margin: 0; color: #2c3e50;'>Default Risk</h4>
+                <div style='font-size: 2rem; font-weight: bold; color: #e74c3c;'>{ensemble_prob:.1%}</div>
+                <div style='font-size: 0.9rem; color: #7f8c8d;'>Probability</div>
+            </div>
+            """, unsafe_allow_html=True)
     
-    factor_df = factor_df.sort_values('Contribution', key=abs, ascending=False)
-    
-    positive_factors = factor_df[factor_df['Contribution'] < 0].head(3)  # Lower contribution = lower default risk
-    negative_factors = factor_df[factor_df['Contribution'] > 0].head(3)  # Higher contribution = higher default risk
-    
-    return positive_factors, negative_factors
+    with col3:
+        combined_score = (ml_score + (ai_score or 0)) / (2 if ai_score else 1)
+        st.markdown(f"""
+        <div class='metric-card'>
+            <h4 style='margin: 0; color: #2c3e50;'>Combined</h4>
+            <div style='font-size: 2rem; font-weight: bold; color: #27ae60;'>{combined_score:.1f}/10</div>
+            <div style='font-size: 0.9rem; color: #7f8c8d;'>Final Score</div>
+        </div>
+        """, unsafe_allow_html=True)
 
-# AI Risk Assessment
-def get_ai_assessment(applicant_data, api_key, api_choice, ml_score=None, is_sme=True):
-    if not api_key:
-        return "Please provide API key for AI assessment", 5, "AI API key not configured"
-    
-    # Initialize explanation components
-    risk_factors = []
-    strengths = []
-    
-    # Calculate AI score based on multiple factors
-    ai_base_score = 0
-    max_score = 10
-    risk_weights = {
-        'financial': 0.35,
-        'credit_history': 0.25,
-        'business_stability': 0.20,
-        'banking_profile': 0.20
-    }
+def create_input_form(form_type="sme"):
+    """Create standardized input form"""
+    if form_type == "sme":
+        st.markdown('<div class="info-card">', unsafe_allow_html=True)
+        col1, col2, col3 = st.columns(3)
         
-    # Analyze application data
-    if is_sme:
-        factors = {
-            'revenue_ratio': applicant_data['monthly_revenue_bdt'] * 12 / applicant_data['loan_amount_bdt'],
-            'debt_service': applicant_data['loan_amount_bdt'] / (applicant_data['monthly_revenue_bdt'] * 12),
-            'business_age': applicant_data['years_in_business'],
-            'credit_history': not applicant_data['previous_loan_default']
+        with col1:
+            st.markdown("#### Business Information")
+            business_type = st.selectbox("Business Type", 
+                ["Retail Trade", "Manufacturing", "Services", "Agriculture", "Technology"], key=f"{form_type}_biz")
+            years_in_business = st.number_input("Years in Business", min_value=0.0, max_value=50.0, value=3.0, key=f"{form_type}_years")
+            monthly_revenue = st.number_input("Monthly Revenue (BDT)", min_value=10000, max_value=10000000, value=150000, key=f"{form_type}_revenue")
+            employees = st.number_input("Number of Employees", min_value=0, max_value=500, value=5, key=f"{form_type}_emp")
+            
+        with col2:
+            st.markdown("#### Financial Details")
+            loan_amount = st.number_input("Loan Amount (BDT)", min_value=10000, max_value=50000000, value=500000, key=f"{form_type}_loan")
+            loan_term = st.selectbox("Loan Term (Months)", [12, 24, 36, 48, 60], key=f"{form_type}_term")
+            existing_loans = st.number_input("Existing Loans", min_value=0, max_value=10, value=0, key=f"{form_type}_existing")
+            location_type = st.selectbox("Location Type", ["Urban", "Semi-Urban", "Rural"], key=f"{form_type}_location")
+            
+        with col3:
+            st.markdown("#### Credit & Banking")
+            bank_account_years = st.number_input("Bank Account Age (Years)", min_value=0.0, max_value=50.0, value=2.0, key=f"{form_type}_bank")
+            mobile_banking = st.checkbox("Mobile Banking User", value=True, key=f"{form_type}_mobile")
+            previous_default = st.checkbox("Previous Loan Default", key=f"{form_type}_default")
+            guarantor = st.selectbox("Guarantor Available", ["No", "Yes"], index=1, key=f"{form_type}_guarantor")
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+        return {
+            'business_type': business_type,
+            'years_in_business': years_in_business,
+            'monthly_revenue': monthly_revenue,
+            'employees': employees,
+            'loan_amount': loan_amount,
+            'loan_term': loan_term,
+            'existing_loans': existing_loans,
+            'location_type': location_type,
+            'bank_account_years': bank_account_years,
+            'mobile_banking': mobile_banking,
+            'previous_default': previous_default,
+            'guarantor': guarantor
         }
-    else:
-        factors = {
-            'income_ratio': applicant_data['monthly_income_bdt'] * 12 / applicant_data['loan_amount_bdt'],
-            'debt_service': applicant_data['loan_amount_bdt'] / (applicant_data['monthly_income_bdt'] * 12),
-            'banking_score': applicant_data['bank_account_years'] * (1 if applicant_data['mobile_banking_user'] else 0.8),
-            'credit_history': not applicant_data['previous_loan_default']
+    
+    else:  # employed form
+        st.markdown('<div class="info-card">', unsafe_allow_html=True)
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.markdown("#### Personal Information")
+            age = st.number_input("Age", min_value=18, max_value=70, value=35, key=f"{form_type}_age")
+            education = st.selectbox("Education Level", 
+                ["Primary", "Secondary", "Higher Secondary", "Bachelor's", "Master's"], key=f"{form_type}_edu")
+            location = st.selectbox("Division", 
+                ["Dhaka", "Chittagong", "Rajshahi", "Khulna", "Barisal", "Sylhet", "Rangpur", "Mymensingh"], key=f"{form_type}_div")
+            location_type = st.selectbox("Location Type", ["Urban", "Semi-Urban", "Rural"], key=f"{form_type}_loc_type")
+            
+        with col2:
+            st.markdown("#### Employment & Income")
+            employer_type = st.selectbox("Employer Type", 
+                ["Government", "Private Company", "Multinational", "NGO", "Self-Employed"], key=f"{form_type}_employer")
+            monthly_salary = st.number_input("Monthly Salary (BDT)", min_value=10000, max_value=500000, value=60000, key=f"{form_type}_salary")
+            side_business_income = st.number_input("Side Business Income (BDT)", min_value=0, max_value=500000, value=20000, key=f"{form_type}_side")
+            loan_amount = st.number_input("Loan Amount (BDT)", min_value=10000, max_value=10000000, value=300000, key=f"{form_type}_loan_amt")
+            
+        with col3:
+            st.markdown("#### Credit & Banking")
+            loan_term = st.selectbox("Loan Term (Months)", [12, 24, 36, 48, 60], key=f"{form_type}_loan_term")
+            bank_years = st.number_input("Banking History (Years)", min_value=0.0, max_value=50.0, value=5.0, key=f"{form_type}_bank_years")
+            mobile_banking = st.checkbox("Mobile Banking User", value=True, key=f"{form_type}_mobile_bank")
+            previous_default = st.checkbox("Previous Default", key=f"{form_type}_prev_default")
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+        return {
+            'age': age,
+            'education': education,
+            'location': location,
+            'location_type': location_type,
+            'employer_type': employer_type,
+            'monthly_salary': monthly_salary,
+            'side_business_income': side_business_income,
+            'loan_amount': loan_amount,
+            'loan_term': loan_term,
+            'bank_years': bank_years,
+            'mobile_banking': mobile_banking,
+            'previous_default': previous_default
         }
-    
-    # Calculate detailed AI risk assessment
-    debt_service_ratio = applicant_data['loan_amount_bdt'] / (applicant_data['monthly_income_bdt'] * 12)
-    banking_score = applicant_data['bank_account_years'] * (1 if applicant_data['mobile_banking_user'] else 0.8)
-    
+
+def get_ai_assessment_simplified(applicant_data, is_sme=True):
+    """Simplified AI assessment without external API"""
+    # Calculate key financial ratios
     if is_sme:
-        revenue_coverage = applicant_data['monthly_revenue_bdt'] * 12 / applicant_data['loan_amount_bdt']
-        business_stability = min(1, applicant_data['years_in_business'] / 5)
-        # Financial health score (0-10)
-        financial_score = (
-            (1 - min(debt_service_ratio, 1)) * 5 +  # Lower debt ratio is better
-            min(revenue_coverage/2, 1) * 5           # Higher revenue coverage is better
-        )
-        # Business stability score (0-10)
-        stability_score = (
-            business_stability * 6 +                    # Years in business
-            (banking_score / 5) * 4                     # Banking relationship
-        )
-        # Calculate weighted AI score
-        ai_base_score = (
-            financial_score * risk_weights['financial'] +
-            (10 if not applicant_data['previous_loan_default'] else 3) * risk_weights['credit_history'] +
-            stability_score * risk_weights['business_stability'] +
-            (banking_score * 2) * risk_weights['banking_profile']
-        )
+        income_key = 'monthly_revenue'
+        debt_service_ratio = applicant_data['loan_amount'] / (applicant_data['monthly_revenue'] * 12)
+        coverage_ratio = (applicant_data['monthly_revenue'] * 12) / applicant_data['loan_amount']
+        stability_factor = min(1, applicant_data['years_in_business'] / 5)
     else:
-        salary_coverage = applicant_data['monthly_income_bdt'] * 12 / applicant_data['loan_amount_bdt']
-        # Financial health score (0-10)
-        financial_score = (
-            (1 - min(debt_service_ratio, 1)) * 6 +
-            min(salary_coverage/2, 1) * 4
-        )
-        ai_base_score = (
-            financial_score * 0.6 +
-            (10 if not applicant_data['previous_loan_default'] else 3) * 0.4
-        )
-    final_score = max(1, min(10, ai_base_score))
+        total_income = applicant_data['monthly_salary'] + applicant_data['side_business_income']
+        debt_service_ratio = applicant_data['loan_amount'] / (total_income * 12)
+        coverage_ratio = (total_income * 12) / applicant_data['loan_amount']
+        stability_factor = 0.8  # Default for employed
     
-    # Generate detailed analysis
-    factors = []
-    if is_sme:
-        if debt_service_ratio > 0.5:
-            factors.append(f"High debt service ratio ({debt_service_ratio:.2f})")
-        if revenue_coverage < 1.5:
-            factors.append(f"Low revenue coverage ({revenue_coverage:.2f}x)")
-        if applicant_data['years_in_business'] < 3:
-            factors.append(f"Limited business history ({applicant_data['years_in_business']:.1f} years)")
-    else:
-        if debt_service_ratio > 0.4:
-            factors.append(f"High debt service ratio ({debt_service_ratio:.2f})")
-        if salary_coverage < 2:
-            factors.append(f"Low salary coverage ({salary_coverage:.2f}x)")
+    # Calculate AI score
+    base_score = 10
     
-    if applicant_data['previous_loan_default']:
-        factors.append("Previous default history")
+    # Penalize high debt service ratio
+    if debt_service_ratio > 0.5:
+        base_score -= 3
+    elif debt_service_ratio > 0.3:
+        base_score -= 1.5
     
-    # Risk assessment notes for future enhancement:
-    # - Consider Bangladesh's economic context
-    # - Rate credit risk from 1-10 (10 being lowest risk)
-    # - Explain why applicant might default in 2-3 sentences
+    # Reward good coverage
+    if coverage_ratio >= 3:
+        base_score += 1
+    elif coverage_ratio < 1.5:
+        base_score -= 2
     
-    # Analyze risk factors
-    if is_sme:
-        if debt_service_ratio > 0.5:
-            risk_factors.append(f"Debt service ratio ({debt_service_ratio:.2f}) above recommended level")
-        else:
-            strengths.append(f"Healthy debt service ratio of {debt_service_ratio:.2f}")
-
-        if revenue_coverage < 1.5:
-            risk_factors.append(f"Low revenue coverage ({revenue_coverage:.2f}x)")
-        else:
-            strengths.append(f"Strong revenue coverage of {revenue_coverage:.2f}x")
-
-        if business_stability < 0.6:
-            risk_factors.append(f"Limited business history ({applicant_data['years_in_business']:.1f} years)")
-        else:
-            strengths.append(f"Established business ({applicant_data['years_in_business']:.1f} years)")
-    else:
-        if debt_service_ratio > 0.4:
-            risk_factors.append(f"High debt service ratio ({debt_service_ratio:.2f})")
-        else:
-            strengths.append(f"Manageable debt service ratio of {debt_service_ratio:.2f}")
-
-    if applicant_data['previous_loan_default']:
-        risk_factors.append("Previous default history")
-    else:
-        strengths.append("Clean credit history")
-
-    # final_score is already set above from ai_base_score
-    risk_level = "Low" if final_score >= 7 else "Moderate" if final_score >= 4 else "High"
-
+    # Consider stability
+    base_score *= stability_factor
+    
+    # Previous default penalty
+    if applicant_data.get('previous_default', False):
+        base_score -= 2
+    
+    # Banking relationship bonus
+    banking_years = applicant_data.get('bank_account_years', applicant_data.get('bank_years', 0))
+    if banking_years >= 3:
+        base_score += 0.5
+    
+    # Mobile banking bonus
+    if applicant_data.get('mobile_banking', False):
+        base_score += 0.3
+    
+    ai_score = max(1, min(10, base_score))
+    
     # Generate explanation
-    strengths_text = "\n".join('- ' + s for s in strengths)
-    risk_text = "\n".join('- ' + r for r in risk_factors) if risk_factors else 'No significant risk factors identified.'
+    risk_level = "Low" if ai_score >= 7 else "Moderate" if ai_score >= 4 else "High"
     
-    assessment_result = (
-        'strong potential with manageable risk levels.' if final_score >= 7
-        else 'moderate risk with some concerns that need attention.' if final_score >= 4
-        else 'significant risk factors that require careful consideration.'
-    )
+    explanation = f"""
+    AI Risk Assessment: {risk_level} Risk (Score: {ai_score:.1f}/10)
     
-    explanation = (
-        f"Assessment Summary for {'SME' if is_sme else 'Salaried'} Applicant:\n"
-        f"Risk Level: {risk_level} (Score: {final_score:.1f}/10)\n\n"
-        f"Strengths:\n{strengths_text}\n\n"
-        f"Risk Factors:\n{risk_text}\n\n"
-        f"{'Business' if is_sme else 'Application'} shows {assessment_result}"
-    )
-
-    return explanation, final_score, f"{'Business' if is_sme else 'Personal'} risk assessment completed"
+    Key Factors:
+    • Debt Service Ratio: {debt_service_ratio:.2f} ({'High' if debt_service_ratio > 0.4 else 'Acceptable'})
+    • Income Coverage: {coverage_ratio:.1f}x ({'Strong' if coverage_ratio >= 2 else 'Weak'})
+    • Banking History: {banking_years:.1f} years
+    • Digital Banking: {'Yes' if applicant_data.get('mobile_banking', False) else 'No'}
     
-    business_context = "SME business" if is_sme else "Salaried professional"
-    
-    explanation = f"""Based on comprehensive analysis of this {business_context} application in Bangladesh:
-    
-    Risk Level: {risk_level} (Score: {final_score:.1f}/10)
-    
-    {risk_factors}
-    
-    {'Business shows ' if is_sme else 'Application shows '}
-    {
-        'strong potential with manageable risk levels.' if final_score >= 7 else
-        'moderate risk with some concerns that need attention.' if final_score >= 4 else
-        'significant risk factors that require careful consideration.'
-    }
-    
-    {'Business stability and revenue generation are key strengths.' if is_sme and final_score >= 7 else
-     'Stable employment and income levels support the application.' if not is_sme and final_score >= 7 else
-     'Additional risk mitigation measures are recommended.' if final_score >= 4 else
-     'Significant improvements needed in financial metrics.'}
+    {'Strong financial profile with manageable risk.' if ai_score >= 7 else 
+     'Moderate risk requiring additional review.' if ai_score >= 4 else 
+     'High risk factors present, careful consideration needed.'}
     """
     
-    return (
-        explanation,
-        final_score,
-        f"{'Business' if is_sme else 'Personal'} risk assessment completed"
-    )
-
-# Main Application
-tab1, tab2, tab3 = st.tabs(["SME Business", "Employed Businessman", "Benchmark"])
+    return explanation, ai_score
 
 # Train models
 if not st.session_state.model_trained:
@@ -523,514 +611,266 @@ else:
 
 models = [lr_model, rf_model, gb_model]
 
+# Main tabs
+tab1, tab2, tab3 = st.tabs(["SME Business Loan", "Personal Loan", "Model Performance"])
+
 with tab1:
-    st.header("SME Business Loan Assessment")
+    st.markdown("## SME Business Loan Assessment")
     
-    col1, col2, col3 = st.columns(3)
+    form_data = create_input_form("sme")
     
-    with col1:
-        st.subheader("Business Information")
-        business_type = st.selectbox("Business Type", 
-            ["Retail Trade", "Manufacturing", "Services", "Agriculture", "Technology"])
-        years_in_business = st.number_input("Years in Business", min_value=0.0, max_value=50.0, value=3.0)
-        monthly_revenue = st.number_input("Monthly Revenue (BDT)", min_value=10000, max_value=10000000, value=150000)
-        employees = st.number_input("Number of Employees", min_value=0, max_value=500, value=5)
-        location_type = st.selectbox("Location Type", ["Urban", "Semi-Urban", "Rural"])
-        inventory_days = st.number_input("Inventory Turnover Days", min_value=0, max_value=365, value=30)
-        
-    with col2:
-        st.subheader("Financial Details")
-        loan_amount = st.number_input("Loan Amount (BDT)", min_value=10000, max_value=50000000, value=500000)
-        loan_term = st.selectbox("Loan Term (Months)", [12, 24, 36, 48, 60])
-        existing_loans = st.number_input("Existing Loans", min_value=0, max_value=10, value=0)
-        gross_margin = st.slider("Gross Profit Margin (%)", 0, 100, 30)
-        working_capital_days = st.number_input("Working Capital Days", min_value=0, max_value=365, value=45)
-        
-    with col3:
-        st.subheader("Credit & Banking")
-        bank_account_years = st.number_input("Bank Account Age (Years)", min_value=0.0, max_value=50.0, value=2.0)
-        mobile_banking = st.checkbox("Mobile Banking User", value=True)
-        previous_default = st.checkbox("Previous Loan Default")
-        
-        num_guarantors = st.selectbox(
-            "Number of Guarantors",
-            ["0", "1", "2", "3", "3+"],
-            index=1
-        )
-        
-        if num_guarantors != "0":
-            guarantor_types = st.multiselect(
-                "Guarantor Type(s)",
-                [
-                    "Business Owner",
-                    "Salaried Professional",
-                    "Property Owner", 
-                    "Government Employee",
-                    "Bank Employee",
-                    "Corporate Professional",
-                    "Others"
-                ],
-                ["Business Owner"]
-            )
+    if st.button("Assess Credit Risk", key="sme_assess", use_container_width=True):
+        with st.spinner("Analyzing credit risk..."):
+            # Prepare input data
+            input_data = pd.DataFrame({
+                'age': [35],
+                'monthly_income_bdt': [form_data['monthly_revenue']],
+                'family_members': [4],
+                'education_level': [3],
+                'division': [1],
+                'urban_rural': [1 if form_data['location_type'] == "Urban" else 0],
+                'loan_amount_bdt': [form_data['loan_amount']],
+                'loan_term_months': [form_data['loan_term']],
+                'existing_loans': [form_data['existing_loans']],
+                'mobile_banking_user': [1 if form_data['mobile_banking'] else 0],
+                'bank_account_years': [form_data['bank_account_years']],
+                'business_type': [["Retail Trade", "Manufacturing", "Services", "Agriculture", "Technology"].index(form_data['business_type']) + 1],
+                'years_in_business': [form_data['years_in_business']],
+                'monthly_revenue_bdt': [form_data['monthly_revenue']],
+                'employees': [form_data['employees']],
+                'monthly_transactions': [20],
+                'avg_transaction_size_bdt': [5000],
+                'bank_transaction_sales_ratio': [0.75],
+                'previous_loan_default': [1 if form_data['previous_default'] else 0],
+                'utility_bill_delays': [0],
+                'guarantor_available': [1 if form_data['guarantor'] == "Yes" else 0],
+                'social_capital_score': [0.7],
+                'religious_donations_regular': [1],
+                'debt_to_income_ratio': [form_data['loan_amount'] / (form_data['monthly_revenue'] * 12)],
+                'revenue_per_employee': [form_data['monthly_revenue'] / (form_data['employees'] + 1)],
+                'transaction_frequency_score': [0.67],
+                'digital_banking_score': [(1 if form_data['mobile_banking'] else 0) * form_data['bank_account_years']],
+                'credit_risk_score': [(1 if form_data['previous_default'] else 0) * 2 / 3]
+            })
             
-            if "Others" in guarantor_types:
-                other_guarantor = st.text_input("Specify Other Guarantor Type")
+            # Scale input
+            input_scaled = scaler.transform(input_data)
             
-            guarantor_relationship = st.selectbox(
-                "Primary Guarantor Relationship",
-                ["Family Member", "Business Partner", "Professional Associate", "Friend", "Other"]
-            )
-    
-    if st.button("Assess Credit Risk", key="sme_assess"):
-        # Calculate derived values
-        monthly_income = monthly_revenue  # For SME, use business revenue as income
-        bank_trans_ratio = 0.75  # Default ratio for SME
-        business_type_index = ["Retail Trade", "Manufacturing", "Services", "Agriculture", "Technology"].index(business_type) + 1
-        location_type_index = ["Urban", "Semi-Urban", "Rural"].index(location_type)
-        family_members = 4  # Default value
-        
-        # Prepare input data
-        input_data = pd.DataFrame({
-            'age': [35],
-            'monthly_income_bdt': [monthly_income],
-            'family_members': [family_members],
-            'education_level': [3],
-            'division': [1],
-            'urban_rural': [1],
-            'loan_amount_bdt': [loan_amount],
-            'loan_term_months': [loan_term],
-            'existing_loans': [existing_loans],
-            'mobile_banking_user': [1 if mobile_banking else 0],
-            'bank_account_years': [bank_account_years],
-            'business_type': [["Retail Trade", "Manufacturing", "Services", "Agriculture", "Technology"].index(business_type) + 1],
-            'years_in_business': [years_in_business],
-            'monthly_revenue_bdt': [monthly_revenue],
-            'employees': [employees],
-            'monthly_transactions': [20],
-            'avg_transaction_size_bdt': [5000],
-            'bank_transaction_sales_ratio': [bank_trans_ratio],
-            'previous_loan_default': [1 if previous_default else 0],
-            'utility_bill_delays': [0],
-            'guarantor_available': [1 if num_guarantors != "0" else 0],
-            'social_capital_score': [0.7],
-            'religious_donations_regular': [1],
-            'debt_to_income_ratio': [loan_amount / (monthly_income * 12)],
-            'revenue_per_employee': [monthly_revenue / (employees + 1)],
-            'transaction_frequency_score': [0.67],
-            'digital_banking_score': [(1 if mobile_banking else 0) * bank_account_years],
-            'credit_risk_score': [(1 if previous_default else 0) * 2 / 3]
-        })
-        
-        # Scale input
-        input_scaled = scaler.transform(input_data)
-        
-        # Get predictions
-        ensemble_prob = ensemble_predict(models, input_scaled)[0]
-        ml_score = calculate_credit_score(ensemble_prob)
-        decision, color = get_decision(ml_score)
-        
-        # Display results in a structured format
-        st.markdown("---")
-        
-        # Get AI assessment first
-        ai_explanation, ai_score, ai_reasoning = get_ai_assessment(input_data.iloc[0], api_key, api_choice)
-        
-        # Enhanced Dynamic Recommendations Engine
-        client_score = (ml_score * 0.6 + ai_score * 0.4)  # Combined score
-        max_possible_loan = monthly_revenue * 8  # 8 months revenue for excellent clients
-        min_suggested_loan = monthly_revenue * 4  # 4 months revenue for risky clients
-        optimal_loan = min(monthly_revenue * 6, loan_amount)  # 6 months revenue as baseline
-        
-        if client_score >= 8:
-            recommended_loan = min(loan_amount * 1.2, max_possible_loan)  # Can offer 20% more
-            loan_message = "💡 Based on your excellent profile, you qualify for a higher loan amount"
-            loan_color = "#1a5d1a"  # Dark green
-        elif client_score >= 6:
-            recommended_loan = min(loan_amount, optimal_loan)  # Based on revenue
-            loan_message = "✓ Recommended loan amount based on business revenue"
-            loan_color = "#1565c0"  # Blue
-        else:
-            recommended_loan = min(loan_amount * 0.7, min_suggested_loan)  # 30% reduction
-            loan_message = "⚠️ Suggesting a lower amount to improve approval chances"
-            loan_color = "#8b4513"  # Brown
+            # Get predictions
+            ensemble_prob = ensemble_predict(models, input_scaled)[0]
+            ml_score = calculate_credit_score(ensemble_prob)
+            decision, color, css_class = get_decision(ml_score)
             
-        optimal_term = min(loan_term, int(36 * (loan_amount / recommended_loan)))
-        
-        # Modern Decision Card
-        st.markdown(f"""
-        <div style='background: linear-gradient(135deg, {color}22, {color}11);
-             padding: 25px; border-radius: 15px; border: 2px solid {color}33;
-             margin-bottom: 30px; text-align: center;'>
-            <h2 style='color: {color}; margin: 0; font-size: 28px;'>{decision}</h2>
-            <div style='margin: 15px 0; font-size: 16px; color: #555;'>
-                {loan_message}<br/>
-                Recommended Amount: ৳{recommended_loan:,.0f} over {optimal_term} months
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # Get AI assessment
-        ai_explanation, ai_score, ai_reasoning = get_ai_assessment(input_data.iloc[0], api_key, api_choice)
-        
-        # Calculate combined score
-        client_score = (ml_score * 0.6 + ai_score * 0.4)
-        
-        # Improved Scoring Display with Toggle
-        st.markdown("### Credit Assessment Analysis")
-        score_type = st.radio("Select Analysis Type", ["Combined Analysis", "ML Analysis", "AI Analysis"], horizontal=True)
-        
-        if score_type == "Combined Analysis":
-            col1, col2, col3 = st.columns([1,2,1])
-            with col2:
-                st.markdown(f"""
-                <div style='background: linear-gradient(135deg, {color}22, {color}11);
-                     padding: 25px; border-radius: 15px; border: 2px solid {color}33; text-align: center;'>
-                    <h3 style='margin: 0; color: {color};'>Combined Score: {client_score:.1f}/10</h3>
-                    <div style='margin: 15px 0; color: #555;'>
-                        ML Score: {ml_score}/10 (60%) | AI Score: {ai_score:.1f}/10 (40%)
-                    </div>
-                    <div style='font-size: 14px; color: #666;'>
-                        Risk Level: {decision}
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-        
-        elif score_type == "ML Analysis":
-            st.markdown("""
-            <div style='background-color: #f8f9fa; padding: 20px; border-radius: 10px; border: 1px solid #e0e0e0;'>
-                <h4 style='margin: 0 0 15px 0; color: #2c3e50;'>Machine Learning Detailed Analysis</h4>
-            """, unsafe_allow_html=True)
+            # Get AI assessment
+            ai_explanation, ai_score = get_ai_assessment_simplified(form_data, is_sme=True)
             
+            # Calculate recommended amount
+            recommended_amount = min(form_data['monthly_revenue'] * 6, form_data['loan_amount'])
+            if ml_score >= 8:
+                recommended_amount = min(form_data['loan_amount'] * 1.2, form_data['monthly_revenue'] * 8)
+            elif ml_score < 5:
+                recommended_amount = form_data['loan_amount'] * 0.7
+            
+            # Display results
+            st.markdown("---")
+            display_result_card(decision, ml_score, color, css_class, form_data['loan_amount'], recommended_amount)
+            
+            # Score breakdown
+            st.markdown("### Score Analysis")
+            display_score_breakdown(ml_score, ai_score, ensemble_prob)
+            
+            # Detailed analysis
             col1, col2 = st.columns(2)
-            with col1:
-                st.metric("ML Credit Score", f"{ml_score}/10", "Primary Score")
-                st.metric("Default Probability", f"{ensemble_prob:.1%}", "Risk Assessment")
-            with col2:
-                st.metric("Model Confidence", f"{(1-ensemble_prob)*100:.1f}%", "Approval Confidence")
-                st.metric("Risk Category", decision)
             
-            st.markdown("</div>", unsafe_allow_html=True)
-        
-        else:  # AI Analysis
-            st.markdown("""
-            <div style='background-color: #f8f9fa; padding: 20px; border-radius: 10px; border: 1px solid #e0e0e0;'>
-                <h4 style='margin: 0 0 15px 0; color: #2c3e50;'>AI Contextual Analysis</h4>
-            """, unsafe_allow_html=True)
-            
-            col1, col2 = st.columns(2)
             with col1:
-                st.metric("AI Credit Score", f"{ai_score:.1f}/10", "Contextual Score")
-                st.metric("Risk Category", ai_reasoning)
+                st.markdown('<div class="info-card">', unsafe_allow_html=True)
+                st.markdown("#### Risk Factors Analysis")
+                
+                # Key metrics
+                debt_ratio = form_data['loan_amount'] / (form_data['monthly_revenue'] * 12)
+                revenue_coverage = (form_data['monthly_revenue'] * 12) / form_data['loan_amount']
+                
+                metrics = [
+                    ("Debt-to-Revenue Ratio", f"{debt_ratio:.2f}", "Good" if debt_ratio < 0.5 else "High"),
+                    ("Revenue Coverage", f"{revenue_coverage:.1f}x", "Strong" if revenue_coverage > 2 else "Weak"),
+                    ("Business Age", f"{form_data['years_in_business']:.1f} years", "Established" if form_data['years_in_business'] >= 3 else "Growing"),
+                    ("Banking History", f"{form_data['bank_account_years']:.1f} years", "Good" if form_data['bank_account_years'] >= 2 else "Limited")
+                ]
+                
+                for metric, value, status in metrics:
+                    color_indicator = "#27ae60" if status in ["Good", "Strong", "Established"] else "#f39c12" if status in ["Growing", "Limited"] else "#e74c3c"
+                    st.markdown(f"""
+                    <div style='display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee;'>
+                        <span><strong>{metric}:</strong> {value}</span>
+                        <span style='color: {color_indicator}; font-weight: 600;'>{status}</span>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                st.markdown('</div>', unsafe_allow_html=True)
+            
             with col2:
-                st.markdown("#### AI Insights")
+                st.markdown('<div class="info-card">', unsafe_allow_html=True)
+                st.markdown("#### AI Assessment Details")
                 st.write(ai_explanation)
-            
-            st.markdown("</div>", unsafe_allow_html=True)
-        
-        # Enhanced Risk Analysis Cards
-        st.markdown("### Comprehensive Risk Analysis")
-        analysis_type = st.radio("Analysis View", ["Risk Factors", "Business Health", "Financial Metrics"], horizontal=True)
-        
-        if analysis_type == "Risk Factors":
-            # Calculated Risk Components
-            risk_components = {
-                'Business Stability': {
-                    'score': min(10, years_in_business * 2),
-                    'weight': 0.3,
-                    'status': 'Strong' if years_in_business >= 3 else 'Growing',
-                    'detail': f'Business age: {years_in_business:.1f} years'
-                },
-                'Financial Health': {
-                    'score': min(10, (monthly_revenue / loan_amount) * 5),
-                    'weight': 0.25,
-                    'status': 'Healthy' if monthly_revenue > loan_amount/24 else 'Moderate',
-                    'detail': f'Revenue to loan ratio: {(monthly_revenue*12/loan_amount):.1f}x'
-                },
-                'Credit Profile': {
-                    'score': 10 if not previous_default else 3,
-                    'weight': 0.25,
-                    'status': 'Excellent' if not previous_default else 'Needs Attention',
-                    'detail': 'No defaults' if not previous_default else 'Has previous defaults'
-                },
-                'Banking Profile': {
-                    'score': min(10, bank_account_years * 2),
-                    'weight': 0.2,
-                    'status': 'Established' if bank_account_years >= 3 else 'Developing',
-                    'detail': f'Banking history: {bank_account_years:.1f} years'
-                }
-            }
-            
-            for component, details in risk_components.items():
-                score = details['score'] * details['weight']
-                st.markdown(f"""
-                <div style='padding: 10px; border-radius: 5px; background-color: #ffffff; border: 1px solid #e0e0e0; margin: 5px 0;'>
-                    <div style='display: flex; justify-content: space-between; align-items: center;'>
-                        <strong>{component}</strong>
-                        <span style='color: {"#1a5d1a" if details["status"] == "Good" else "#8b4513"}'>
-                            {details["status"]}
-                        </span>
-                    </div>
-                    <div style='background-color: #e3f2fd; width: {details["score"]*10}%; height: 6px; border-radius: 3px; margin: 5px 0;'></div>
-                    <small>Contribution: {score:.1f} points</small>
-                </div>
-                """, unsafe_allow_html=True)
-        
-        with col2:
-            # Strengths & Weaknesses
-            positive_factors, negative_factors = explain_ml_prediction(
-                models, input_data.values[0], feature_columns, scaler
-            )
-            
-            st.markdown("""
-            <div style='padding: 15px; border-radius: 5px; background-color: #ffffff; border: 1px solid #e0e0e0;'>
-                <h4>Key Strengths</h4>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            for _, row in positive_factors.iterrows():
-                feature = row['Feature'].replace('_', ' ').title()
-                st.markdown(f"""
-                <div style='padding: 10px; margin: 5px 0; background-color: #e8f5e9; border-radius: 5px;'>
-                    <strong>{feature}</strong><br/>
-                    Impact: {abs(row['Contribution']):.2f} points
-                </div>
-                """, unsafe_allow_html=True)
-        
-        # Improvement Areas Card
-        st.markdown("### Areas for Improvement")
-        for _, row in negative_factors.iterrows():
-            feature = row['Feature'].replace('_', ' ').title()
-            improvement = get_improvement_suggestion(feature)
-            st.markdown(f"""
-            <div style='padding: 15px; margin: 10px 0; background-color: #fff3e0; border-radius: 5px;'>
-                <strong>{feature}</strong> (Risk Impact: {abs(row['Contribution']):.2f} points)<br/>
-                {improvement}
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col2:
-            st.markdown("### AI Assessment")
-            ai_explanation, ai_score, ai_reasoning = get_ai_assessment(input_data.iloc[0], api_key, api_choice)
-            st.metric("AI Credit Score", f"{ai_score:.1f}/10")
-            st.markdown("#### AI Explanation")
-            st.write(ai_explanation)
-            st.info(ai_reasoning)
+                st.markdown('</div>', unsafe_allow_html=True)
 
 with tab2:
-    st.header("Employed Businessman Loan Assessment")
+    st.markdown("## Personal Loan Assessment")
     
-    col1, col2, col3 = st.columns(3)
+    form_data = create_input_form("employed")
+    
+    if st.button("Assess Credit Risk", key="personal_assess", use_container_width=True):
+        with st.spinner("Analyzing credit risk..."):
+            # Calculate total income
+            total_income = form_data['monthly_salary'] + form_data['side_business_income']
+            
+            # Prepare input data
+            input_data = pd.DataFrame({
+                'age': [form_data['age']],
+                'monthly_income_bdt': [total_income],
+                'family_members': [4],
+                'education_level': [["Primary", "Secondary", "Higher Secondary", "Bachelor's", "Master's"].index(form_data['education']) + 1],
+                'division': [["Dhaka", "Chittagong", "Rajshahi", "Khulna", "Barisal", "Sylhet", "Rangpur", "Mymensingh"].index(form_data['location']) + 1],
+                'urban_rural': [1 if form_data['location_type'] == "Urban" else 0],
+                'loan_amount_bdt': [form_data['loan_amount']],
+                'loan_term_months': [form_data['loan_term']],
+                'existing_loans': [0],
+                'mobile_banking_user': [1 if form_data['mobile_banking'] else 0],
+                'bank_account_years': [form_data['bank_years']],
+                'business_type': [1],
+                'years_in_business': [0],
+                'monthly_revenue_bdt': [form_data['side_business_income']],
+                'employees': [0],
+                'monthly_transactions': [25],
+                'avg_transaction_size_bdt': [3000],
+                'bank_transaction_sales_ratio': [0.8],
+                'previous_loan_default': [1 if form_data['previous_default'] else 0],
+                'utility_bill_delays': [0],
+                'guarantor_available': [1],  # Default for personal loans
+                'social_capital_score': [0.8],
+                'religious_donations_regular': [1],
+                'debt_to_income_ratio': [form_data['loan_amount'] / (total_income * 12)],
+                'revenue_per_employee': [form_data['side_business_income']],
+                'transaction_frequency_score': [0.83],
+                'digital_banking_score': [(1 if form_data['mobile_banking'] else 0) * form_data['bank_years']],
+                'credit_risk_score': [(1 if form_data['previous_default'] else 0) * 2 / 3]
+            })
+            
+            # Scale and predict
+            input_scaled = scaler.transform(input_data)
+            ensemble_prob = ensemble_predict(models, input_scaled)[0]
+            ml_score = calculate_credit_score(ensemble_prob)
+            decision, color, css_class = get_decision(ml_score)
+            
+            # Get AI assessment
+            ai_explanation, ai_score = get_ai_assessment_simplified(form_data, is_sme=False)
+            
+            # Calculate recommended amount
+            recommended_amount = min(total_income * 4, form_data['loan_amount'])
+            if ml_score >= 8:
+                recommended_amount = min(form_data['loan_amount'] * 1.1, total_income * 5)
+            elif ml_score < 5:
+                recommended_amount = form_data['loan_amount'] * 0.8
+            
+            # Display results
+            st.markdown("---")
+            display_result_card(decision, ml_score, color, css_class, form_data['loan_amount'], recommended_amount)
+            
+            # Score breakdown
+            st.markdown("### Score Analysis")
+            display_score_breakdown(ml_score, ai_score, ensemble_prob)
+            
+            # Detailed analysis
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown('<div class="info-card">', unsafe_allow_html=True)
+                st.markdown("#### Financial Profile")
+                
+                debt_ratio = form_data['loan_amount'] / (total_income * 12)
+                income_coverage = (total_income * 12) / form_data['loan_amount']
+                
+                metrics = [
+                    ("Total Monthly Income", f"৳{total_income:,}", ""),
+                    ("Debt-to-Income Ratio", f"{debt_ratio:.2f}", "Good" if debt_ratio < 0.4 else "High"),
+                    ("Income Coverage", f"{income_coverage:.1f}x", "Strong" if income_coverage > 2.5 else "Moderate"),
+                    ("Banking History", f"{form_data['bank_years']:.1f} years", "Established" if form_data['bank_years'] >= 3 else "Growing"),
+                    ("Employment Type", form_data['employer_type'], "")
+                ]
+                
+                for metric, value, status in metrics:
+                    if status:
+                        color_indicator = "#27ae60" if status in ["Good", "Strong", "Established"] else "#f39c12" if status in ["Moderate", "Growing"] else "#e74c3c"
+                        st.markdown(f"""
+                        <div style='display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee;'>
+                            <span><strong>{metric}:</strong> {value}</span>
+                            <span style='color: {color_indicator}; font-weight: 600;'>{status}</span>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    else:
+                        st.markdown(f"""
+                        <div style='padding: 8px 0; border-bottom: 1px solid #eee;'>
+                            <strong>{metric}:</strong> {value}
+                        </div>
+                        """, unsafe_allow_html=True)
+                
+                st.markdown('</div>', unsafe_allow_html=True)
+            
+            with col2:
+                st.markdown('<div class="info-card">', unsafe_allow_html=True)
+                st.markdown("#### AI Assessment Details")
+                st.write(ai_explanation)
+                st.markdown('</div>', unsafe_allow_html=True)
+
+with tab3:
+    st.markdown("## Model Performance & Benchmarks")
+    
+    # Calculate performance metrics
+    lr_pred = lr_model.predict_proba(X_test_scaled)[:, 1]
+    rf_pred = rf_model.predict_proba(X_test_scaled)[:, 1]
+    gb_pred = gb_model.predict_proba(X_test_scaled)[:, 1]
+    ensemble_pred = ensemble_predict(models, X_test_scaled)
+    
+    lr_auc = roc_auc_score(y_test, lr_pred)
+    rf_auc = roc_auc_score(y_test, rf_pred)
+    gb_auc = roc_auc_score(y_test, gb_pred)
+    ensemble_auc = roc_auc_score(y_test, ensemble_pred)
+    
+    col1, col2 = st.columns(2)
     
     with col1:
-        st.subheader("Personal Information")
-        age = st.number_input("Age", min_value=18, max_value=70, value=35, key="emp_age")
-        education = st.selectbox("Education Level", 
-            ["Primary", "Secondary", "Higher Secondary", "Bachelor's", "Master's"], key="emp_edu")
-        location = st.selectbox("Division", 
-            ["Dhaka", "Chittagong", "Rajshahi", "Khulna", "Barisal", "Sylhet", "Rangpur", "Mymensingh"], key="emp_loc")
-        location_type = st.selectbox("Location Type", ["Urban", "Semi-Urban", "Rural"], key="emp_loc_type")
-        years_at_job = st.number_input("Years at Current Job", min_value=0.0, max_value=40.0, value=2.0, key="emp_job_years")
+        st.markdown('<div class="info-card">', unsafe_allow_html=True)
+        st.markdown("#### Model Performance Metrics")
         
-    with col2:
-        st.subheader("Employment & Income")
-        employer_type = st.selectbox("Employer Type", 
-            ["Government", "Private Company", "Multinational", "NGO", "Self-Employed"], key="emp_type")
-        monthly_salary = st.number_input("Monthly Salary (BDT)", min_value=10000, max_value=500000, value=60000, key="emp_salary")
-        side_business_income = st.number_input("Side Business Income (BDT)", min_value=0, max_value=500000, value=20000, key="emp_side")
-        loan_amount_emp = st.number_input("Loan Amount (BDT)", min_value=10000, max_value=10000000, value=300000, key="emp_loan")
-        loan_term_emp = st.selectbox("Loan Term (Months)", [12, 24, 36, 48, 60], key="emp_term")
+        models_performance = [
+            ("Logistic Regression", lr_auc, lr_model.score(X_test_scaled, y_test)),
+            ("Random Forest", rf_auc, rf_model.score(X_test_scaled, y_test)),
+            ("Gradient Boosting", gb_auc, gb_model.score(X_test_scaled, y_test)),
+            ("Ensemble Model", ensemble_auc, ((ensemble_pred > 0.5) == y_test).mean())
+        ]
         
-    with col3:
-        st.subheader("Credit & Banking")
-        bank_years_emp = st.number_input("Banking History (Years)", min_value=0.0, max_value=50.0, value=5.0, key="emp_bank")
-        mobile_banking_emp = st.checkbox("Mobile Banking User", value=True, key="emp_mobile")
-        previous_default = st.checkbox("Previous Default", key="emp_default")
-        
-        num_guarantors = st.selectbox(
-            "Number of Guarantors",
-            ["0", "1", "2", "3", "3+"],
-            index=1,
-            key="emp_num_guarantors"
-        )
-        
-        if num_guarantors != "0":
-            guarantor_types = st.multiselect(
-                "Guarantor Type(s)",
-                [
-                    "Salaried Professional",
-                    "Government Employee",
-                    "Bank Employee",
-                    "Corporate Professional",
-                    "Others"
-                ],
-                ["Salaried Professional"],
-                key="emp_guarantor_types"
-            )
-            
-            if "Others" in guarantor_types:
-                other_guarantor = st.text_input("Specify Other Guarantor Type", key="emp_other_guarantor")
-            
-            guarantor_relationship = st.selectbox(
-                "Primary Guarantor Relationship",
-                ["Family Member", "Professional Associate", "Friend", "Other"],
-                key="emp_guarantor_relation"
-            )
-    
-    if st.button("Assess Credit Risk", key="emp_assess"):
-        # Calculate derived values
-        total_income = monthly_salary + side_business_income
-        has_guarantor = num_guarantors != "0"
-        trans_ratio = 0.8  # Default transaction ratio for employed
-        education_level = ["Primary", "Secondary", "Higher Secondary", "Bachelor's", "Master's"].index(education) + 1
-        division_index = ["Dhaka", "Chittagong", "Rajshahi", "Khulna", "Barisal", "Sylhet", "Rangpur", "Mymensingh"].index(location) + 1
-        location_type_index = ["Urban", "Semi-Urban", "Rural"].index(location_type)
-        family_members = 4  # Default value
-        employer_type_index = ["Government", "Private Company", "Multinational", "NGO", "Self-Employed"].index(employer_type) + 1
-        
-        input_data_emp = pd.DataFrame({
-            'age': [age],
-            'monthly_income_bdt': [total_income],
-            'family_members': [family_members],
-            'education_level': [["Primary", "Secondary", "Higher Secondary", "Bachelor's", "Master's"].index(education) + 1],
-            'division': [["Dhaka", "Chittagong", "Rajshahi", "Khulna", "Barisal", "Sylhet", "Rangpur", "Mymensingh"].index(location) + 1],
-            'urban_rural': [1],
-            'loan_amount_bdt': [loan_amount_emp],
-            'loan_term_months': [36],
-            'existing_loans': [0],
-            'mobile_banking_user': [1 if mobile_banking_emp else 0],
-            'bank_account_years': [bank_years_emp],
-            'business_type': [1],
-            'years_in_business': [0],
-            'monthly_revenue_bdt': [side_business_income],
-            'employees': [0],
-            'monthly_transactions': [25],
-            'avg_transaction_size_bdt': [3000],
-            'bank_transaction_sales_ratio': [trans_ratio],
-            'previous_loan_default': [1 if previous_default else 0],
-            'utility_bill_delays': [0],
-            'guarantor_available': [1 if num_guarantors != "0" else 0],
-            'social_capital_score': [0.8],
-            'religious_donations_regular': [1],
-            'debt_to_income_ratio': [loan_amount_emp / (total_income * 12)],
-            'revenue_per_employee': [side_business_income],
-            'transaction_frequency_score': [0.83],
-            'digital_banking_score': [(1 if mobile_banking_emp else 0) * bank_years_emp],
-            'credit_risk_score': [(1 if previous_default else 0) * 2 / 3]
-        })
-        
-        # Scale and predict
-        input_scaled_emp = scaler.transform(input_data_emp)
-        ensemble_prob_emp = ensemble_predict(models, input_scaled_emp)[0]
-        ml_score_emp = calculate_credit_score(ensemble_prob_emp)
-        decision_emp, color_emp = get_decision(ml_score_emp)
-        
-        # Display results
-        st.markdown("---")
-        st.subheader("Assessment Results")
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.markdown("### ML Model Assessment")
-            st.metric("Credit Score", f"{ml_score_emp}/10")
-            st.metric("Default Probability", f"{ensemble_prob_emp:.2%}")
-            st.metric("Decision", decision_emp)
-            
-            # ML Explanation
-            st.markdown("#### Risk Factors Analysis")
-            positive_factors_emp, negative_factors_emp = explain_ml_prediction(
-                models, input_data_emp.values[0], feature_columns, scaler
-            )
-            
-            st.markdown("**Positive Factors:**")
-            for _, row in positive_factors_emp.iterrows():
-                st.write(f"• {row['Feature'].replace('_', ' ').title()}")
-            
-            st.markdown("**Risk Factors:**")
-            for _, row in negative_factors_emp.iterrows():
-                st.write(f"• {row['Feature'].replace('_', ' ').title()}")
-        
-        with col2:
-            st.markdown("### AI Assessment")
-            ai_explanation_emp, ai_score_emp, ai_reasoning_emp = get_ai_assessment(
-                input_data_emp.iloc[0], api_key, api_choice
-            )
-            st.metric("AI Credit Score", f"{ai_score_emp:.1f}/10")
-            st.markdown("#### AI Explanation")
-            st.write(ai_explanation_emp)
-            st.info(ai_reasoning_emp)
-
-# Benchmark tab content
-with tab3:
-    st.header("Credit Assessment Benchmarks")
-    
-    # Add benchmark selector
-    benchmark_view = st.radio(
-        "Select Benchmark View",
-        ["Model Performance", "Industry Statistics", "Regional Comparison"],
-        horizontal=True
-    )
-    
-    if benchmark_view == "Model Performance":
-        # Calculate model performance metrics
-        lr_pred = lr_model.predict_proba(X_test_scaled)[:, 1]
-        rf_pred = rf_model.predict_proba(X_test_scaled)[:, 1]
-        gb_pred = gb_model.predict_proba(X_test_scaled)[:, 1]
-        ensemble_pred = ensemble_predict(models, X_test_scaled)
-        
-        lr_auc = roc_auc_score(y_test, lr_pred)
-        rf_auc = roc_auc_score(y_test, rf_pred)
-        gb_auc = roc_auc_score(y_test, gb_pred)
-        ensemble_auc = roc_auc_score(y_test, ensemble_pred)
-
-        # Display model performance metrics in cards
-        st.markdown("### Model Performance Metrics")
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.markdown("""
-            <div style='padding: 20px; border-radius: 10px; background-color: #f8f9fa; margin-bottom: 20px;'>
-                <h4 style='margin-top: 0;'>Individual Model Performance</h4>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            metrics = {
-                'Logistic Regression': {
-                    'AUC': lr_auc,
-                    'Accuracy': lr_model.score(X_test_scaled, y_test)
-                },
-                'Random Forest': {
-                    'AUC': rf_auc,
-                    'Accuracy': rf_model.score(X_test_scaled, y_test)
-                },
-                'Gradient Boosting': {
-                    'AUC': gb_auc,
-                    'Accuracy': gb_model.score(X_test_scaled, y_test)
-                }
-            }
-            
-            for model_name, scores in metrics.items():
-                st.markdown(f"""
-                <div style='padding: 15px; border-radius: 5px; background-color: #ffffff; border: 1px solid #e0e0e0; margin: 10px 0;'>
-                    <h5 style='margin: 0;'>{model_name}</h5>
-                    <p style='margin: 5px 0;'>AUC Score: {scores['AUC']:.4f}</p>
-                    <p style='margin: 5px 0;'>Accuracy: {scores['Accuracy']:.4f}</p>
+        for model_name, auc, accuracy in models_performance:
+            st.markdown(f"""
+            <div style='padding: 15px; margin: 10px 0; border-radius: 10px; background: linear-gradient(135deg, #667eea22, #764ba222);'>
+                <h5 style='margin: 0; color: #2c3e50;'>{model_name}</h5>
+                <div style='margin: 10px 0;'>
+                    <div style='display: flex; justify-content: space-between;'>
+                        <span>AUC Score:</span>
+                        <strong>{auc:.4f}</strong>
+                    </div>
+                    <div style='display: flex; justify-content: space-between;'>
+                        <span>Accuracy:</span>
+                        <strong>{accuracy:.4f}</strong>
+                    </div>
                 </div>
-                """, unsafe_allow_html=True)
-        
-        with col2:
-            st.markdown("""
-            <div style='padding: 20px; border-radius: 10px; background-color: #f8f9fa; margin-bottom: 20px;'>
-                <h4 style='margin-top: 0;'>Ensemble Model Performance</h4>
             </div>
             """, unsafe_allow_html=True)
-            
-            st.metric("Ensemble AUC Score", f"{ensemble_auc:.4f}", "Combined Performance")
-            st.metric("Accuracy", f"{((ensemble_pred > 0.5) == y_test).mean():.4f}", "Overall Accuracy")
-            st.metric("F1 Score", f"{f1_score(y_test, ensemble_pred > 0.5):.4f}", "Balance Score")
         
-        # Feature importance analysis
-        st.markdown("### Feature Importance Analysis")
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown('<div class="info-card">', unsafe_allow_html=True)
+        st.markdown("#### Feature Importance (Top 10)")
         
         # Get feature importance from Random Forest
         feature_importance = pd.DataFrame({
@@ -1038,32 +878,58 @@ with tab3:
             'Importance': rf_model.feature_importances_
         }).sort_values('Importance', ascending=False).head(10)
         
-        st.markdown("""
-        <div style='padding: 20px; border-radius: 10px; background-color: #f8f9fa; margin: 20px 0;'>
-            <h4 style='margin-top: 0;'>Top 10 Most Important Features</h4>
-        </div>
-        """, unsafe_allow_html=True)
-        
         for _, row in feature_importance.iterrows():
+            feature_name = row['Feature'].replace('_', ' ').title()
+            importance = row['Importance']
+            
             st.markdown(f"""
-            <div style='padding: 10px; border-radius: 5px; background-color: #ffffff; border: 1px solid #e0e0e0; margin: 5px 0;'>
-                <strong>{row['Feature'].replace('_', ' ').title()}</strong>
-                <div style='background-color: #e3f2fd; width: {row['Importance']*100:.1f}%; height: 10px; border-radius: 5px;'></div>
-                <small>Importance: {row['Importance']:.4f}</small>
+            <div style='margin: 8px 0;'>
+                <div style='display: flex; justify-content: space-between; margin-bottom: 4px;'>
+                    <span style='font-size: 14px;'>{feature_name}</span>
+                    <span style='font-size: 12px; color: #7f8c8d;'>{importance:.4f}</span>
+                </div>
+                <div class='progress-bar'>
+                    <div class='progress-fill' style='width: {importance*100:.1f}%;'></div>
+                </div>
             </div>
             """, unsafe_allow_html=True)
-
-    elif benchmark_view == "Industry Statistics":
-        st.subheader("Industry Benchmarks")
-        # Add industry statistics comparison
-        # Add code for industry statistics view
-
-    elif benchmark_view == "Regional Comparison":
-        st.subheader("Regional Performance")
-        # Add regional comparison metrics
-        # Add code for regional comparison view
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    # Performance summary
+    st.markdown('<div class="info-card">', unsafe_allow_html=True)
+    st.markdown("#### System Performance Summary")
+    
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("Overall Accuracy", f"{((ensemble_pred > 0.5) == y_test).mean():.2%}")
+    with col2:
+        st.metric("AUC Score", f"{ensemble_auc:.4f}")
+    with col3:
+        st.metric("F1 Score", f"{f1_score(y_test, ensemble_pred > 0.5):.4f}")
+    with col4:
+        st.metric("Default Rate", f"{y_test.mean():.2%}")
+    
+    st.markdown("#### Model Interpretation")
+    st.write("""
+    The ensemble model combines three different algorithms to provide robust credit scoring:
+    
+    - **Logistic Regression**: Provides interpretable linear relationships
+    - **Random Forest**: Captures non-linear patterns and feature interactions
+    - **Gradient Boosting**: Focuses on correcting prediction errors
+    
+    The system achieves strong performance with balanced accuracy and AUC scores, making it suitable 
+    for credit risk assessment in the Bangladesh market context.
+    """)
+    
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # Footer
 st.markdown("---")
-st.caption("Credit Risk Assessment System - Bangladesh Context | Using ML Ensemble & AI Integration")
-st.caption("Models: Logistic Regression + Random Forest + Gradient Boosting | AI Integration")
+st.markdown(
+    "<div style='text-align: center; color: #7f8c8d; padding: 20px;'>"
+    "CreditIQ - Advanced Credit Risk Intelligence System<br>"
+    "Powered by Machine Learning & AI | Designed for Bangladesh Financial Market"
+    "</div>", 
+    unsafe_allow_html=True
+)
