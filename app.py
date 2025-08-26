@@ -700,99 +700,97 @@ with tab3:
     )
     
     if benchmark_view == "Model Performance":
-    
-    # Calculate model performance metrics
-    lr_pred = lr_model.predict_proba(X_test_scaled)[:, 1]
-    rf_pred = rf_model.predict_proba(X_test_scaled)[:, 1]
-    gb_pred = gb_model.predict_proba(X_test_scaled)[:, 1]
-    ensemble_pred = ensemble_predict(models, X_test_scaled)
-    
-    lr_auc = roc_auc_score(y_test, lr_pred)
-    rf_auc = roc_auc_score(y_test, rf_pred)
-    gb_auc = roc_auc_score(y_test, gb_pred)
-    ensemble_auc = roc_auc_score(y_test, ensemble_pred)
+        # Calculate model performance metrics
+        lr_pred = lr_model.predict_proba(X_test_scaled)[:, 1]
+        rf_pred = rf_model.predict_proba(X_test_scaled)[:, 1]
+        gb_pred = gb_model.predict_proba(X_test_scaled)[:, 1]
+        ensemble_pred = ensemble_predict(models, X_test_scaled)
+        
+        lr_auc = roc_auc_score(y_test, lr_pred)
+        rf_auc = roc_auc_score(y_test, rf_pred)
+        gb_auc = roc_auc_score(y_test, gb_pred)
+        ensemble_auc = roc_auc_score(y_test, ensemble_pred)
 
-    # Display model performance metrics in cards
-    st.markdown("### Model Performance Metrics")
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.markdown("""
-        <div style='padding: 20px; border-radius: 10px; background-color: #f8f9fa; margin-bottom: 20px;'>
-            <h4 style='margin-top: 0;'>Individual Model Performance</h4>
-        </div>
-        """, unsafe_allow_html=True)
+        # Display model performance metrics in cards
+        st.markdown("### Model Performance Metrics")
+        col1, col2 = st.columns(2)
         
-        metrics = {
-            'Logistic Regression': {
-                'AUC': lr_auc,
-                'Accuracy': lr_model.score(X_test_scaled, y_test)
-            },
-            'Random Forest': {
-                'AUC': rf_auc,
-                'Accuracy': rf_model.score(X_test_scaled, y_test)
-            },
-            'Gradient Boosting': {
-                'AUC': gb_auc,
-                'Accuracy': gb_model.score(X_test_scaled, y_test)
-            }
-        }
-        
-        for model_name, scores in metrics.items():
-            st.markdown(f"""
-            <div style='padding: 15px; border-radius: 5px; background-color: #ffffff; border: 1px solid #e0e0e0; margin: 10px 0;'>
-                <h5 style='margin: 0;'>{model_name}</h5>
-                <p style='margin: 5px 0;'>AUC Score: {scores['AUC']:.4f}</p>
-                <p style='margin: 5px 0;'>Accuracy: {scores['Accuracy']:.4f}</p>
+        with col1:
+            st.markdown("""
+            <div style='padding: 20px; border-radius: 10px; background-color: #f8f9fa; margin-bottom: 20px;'>
+                <h4 style='margin-top: 0;'>Individual Model Performance</h4>
             </div>
             """, unsafe_allow_html=True)
-    
-    with col2:
+            
+            metrics = {
+                'Logistic Regression': {
+                    'AUC': lr_auc,
+                    'Accuracy': lr_model.score(X_test_scaled, y_test)
+                },
+                'Random Forest': {
+                    'AUC': rf_auc,
+                    'Accuracy': rf_model.score(X_test_scaled, y_test)
+                },
+                'Gradient Boosting': {
+                    'AUC': gb_auc,
+                    'Accuracy': gb_model.score(X_test_scaled, y_test)
+                }
+            }
+            
+            for model_name, scores in metrics.items():
+                st.markdown(f"""
+                <div style='padding: 15px; border-radius: 5px; background-color: #ffffff; border: 1px solid #e0e0e0; margin: 10px 0;'>
+                    <h5 style='margin: 0;'>{model_name}</h5>
+                    <p style='margin: 5px 0;'>AUC Score: {scores['AUC']:.4f}</p>
+                    <p style='margin: 5px 0;'>Accuracy: {scores['Accuracy']:.4f}</p>
+                </div>
+                """, unsafe_allow_html=True)
+        
+        with col2:
+            st.markdown("""
+            <div style='padding: 20px; border-radius: 10px; background-color: #f8f9fa; margin-bottom: 20px;'>
+                <h4 style='margin-top: 0;'>Ensemble Model Performance</h4>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            st.metric("Ensemble AUC Score", f"{ensemble_auc:.4f}", "Combined Performance")
+            st.metric("Accuracy", f"{((ensemble_pred > 0.5) == y_test).mean():.4f}", "Overall Accuracy")
+            st.metric("F1 Score", f"{f1_score(y_test, ensemble_pred > 0.5):.4f}", "Balance Score")
+        
+        # Feature importance analysis
+        st.markdown("### Feature Importance Analysis")
+        
+        # Get feature importance from Random Forest
+        feature_importance = pd.DataFrame({
+            'Feature': feature_columns,
+            'Importance': rf_model.feature_importances_
+        }).sort_values('Importance', ascending=False).head(10)
+        
         st.markdown("""
-        <div style='padding: 20px; border-radius: 10px; background-color: #f8f9fa; margin-bottom: 20px;'>
-            <h4 style='margin-top: 0;'>Ensemble Model Performance</h4>
+        <div style='padding: 20px; border-radius: 10px; background-color: #f8f9fa; margin: 20px 0;'>
+            <h4 style='margin-top: 0;'>Top 10 Most Important Features</h4>
         </div>
         """, unsafe_allow_html=True)
         
-        st.metric("Ensemble AUC Score", f"{ensemble_auc:.4f}", "Combined Performance")
-        st.metric("Accuracy", f"{((ensemble_pred > 0.5) == y_test).mean():.4f}", "Overall Accuracy")
-        st.metric("F1 Score", f"{f1_score(y_test, ensemble_pred > 0.5):.4f}", "Balance Score")
-    
-    # Feature importance analysis
-    st.markdown("### Feature Importance Analysis")
-    
-    # Get feature importance from Random Forest
-    feature_importance = pd.DataFrame({
-        'Feature': feature_columns,
-        'Importance': rf_model.feature_importances_
-    }).sort_values('Importance', ascending=False).head(10)
-    
-    st.markdown("""
-    <div style='padding: 20px; border-radius: 10px; background-color: #f8f9fa; margin: 20px 0;'>
-        <h4 style='margin-top: 0;'>Top 10 Most Important Features</h4>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    for _, row in feature_importance.iterrows():
-        st.markdown(f"""
-        <div style='padding: 10px; border-radius: 5px; background-color: #ffffff; border: 1px solid #e0e0e0; margin: 5px 0;'>
-            <strong>{row['Feature'].replace('_', ' ').title()}</strong>
-            <div style='background-color: #e3f2fd; width: {row['Importance']*100:.1f}%; height: 10px; border-radius: 5px;'></div>
-            <small>Importance: {row['Importance']:.4f}</small>
-        </div>
-        """, unsafe_allow_html=True)
-        
-    # Model validation info
-    st.markdown("""
-    <div style='padding: 20px; border-radius: 10px; background-color: #f8f9fa; margin: 20px 0;'>
-        <h4 style='margin-top: 0;'>Model Validation Information</h4>
-        <p style='margin: 5px 0;'>• Test set size: 20% of total data</p>
-        <p style='margin: 5px 0;'>• Stratified sampling used</p>
-        <p style='margin: 5px 0;'>• Features standardized using StandardScaler</p>
-        <p style='margin: 5px 0;'>• Ensemble weights: LR(0.3), RF(0.35), GB(0.35)</p>
-    </div>
-    """, unsafe_allow_html=True)
-    
+        for _, row in feature_importance.iterrows():
+            st.markdown(f"""
+            <div style='padding: 10px; border-radius: 5px; background-color: #ffffff; border: 1px solid #e0e0e0; margin: 5px 0;'>
+                <strong>{row['Feature'].replace('_', ' ').title()}</strong>
+                <div style='background-color: #e3f2fd; width: {row['Importance']*100:.1f}%; height: 10px; border-radius: 5px;'></div>
+                <small>Importance: {row['Importance']:.4f}</small>
+            </div>
+            """, unsafe_allow_html=True)
+
+    elif benchmark_view == "Industry Statistics":
+        st.subheader("Industry Benchmarks")
+        # Add industry statistics comparison
+        # Add code for industry statistics view
+
+    elif benchmark_view == "Regional Comparison":
+        st.subheader("Regional Performance")
+        # Add regional comparison metrics
+        # Add code for regional comparison view
+
 # Footer
 st.markdown("---")
 st.caption("Credit Risk Assessment System - Bangladesh Context | Using ML Ensemble & AI Integration")
