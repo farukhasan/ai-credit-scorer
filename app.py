@@ -340,6 +340,22 @@ def get_ai_assessment(applicant_data, api_key, api_choice, ml_score=None, is_sme
     risk_factors = []
     strengths = []
     
+    # Analyze application data
+    if is_sme:
+        factors = {
+            'revenue_ratio': applicant_data['monthly_revenue_bdt'] * 12 / applicant_data['loan_amount_bdt'],
+            'debt_service': applicant_data['loan_amount_bdt'] / (applicant_data['monthly_revenue_bdt'] * 12),
+            'business_age': applicant_data['years_in_business'],
+            'credit_history': not applicant_data['previous_loan_default']
+        }
+    else:
+        factors = {
+            'income_ratio': applicant_data['monthly_income_bdt'] * 12 / applicant_data['loan_amount_bdt'],
+            'debt_service': applicant_data['loan_amount_bdt'] / (applicant_data['monthly_income_bdt'] * 12),
+            'banking_score': applicant_data['bank_account_years'] * (1 if applicant_data['mobile_banking_user'] else 0.8),
+            'credit_history': not applicant_data['previous_loan_default']
+        }
+    
     # Calculate base risk score using key financial ratios
     debt_service_ratio = applicant_data['loan_amount_bdt'] / (applicant_data['monthly_income_bdt'] * 12)
     if is_sme:
@@ -385,10 +401,10 @@ def get_ai_assessment(applicant_data, api_key, api_choice, ml_score=None, is_sme
     if applicant_data['previous_loan_default']:
         factors.append("Previous default history")
     
-    Provide a brief risk assessment considering Bangladesh's economic context.
-    Rate the credit risk from 1-10 (10 being lowest risk).
-    Explain in 2-3 sentences why this applicant might default.
-    """
+    # Risk assessment notes for future enhancement:
+    # - Consider Bangladesh's economic context
+    # - Rate credit risk from 1-10 (10 being lowest risk)
+    # - Explain why applicant might default in 2-3 sentences
     
     # Analyze risk factors
     if is_sme:
