@@ -24,10 +24,15 @@ st.markdown("""
     .stApp {
         background-color: white !important;
         padding: 0 !important;
+        margin: 0 !important;
     }
     .css-1d391kg {
         background-color: white !important;
         padding: 0 !important;
+        margin: 0 !important;
+    }
+    .main {
+        margin-top: -4rem !important;
     }
     .stTabs [data-baseweb="tab-list"] {
         background-color: white !important;
@@ -391,21 +396,38 @@ with tab1:
         mobile_banking = st.checkbox("Mobile Banking User", value=True)
         bank_trans_ratio = st.slider("Bank Transaction to Sales Ratio", 0.0, 1.0, 0.6)
         previous_default = st.checkbox("Previous Loan Default")
-        st.subheader("Guarantor Information")
+        st.markdown("""
+            <div style='background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-top: 20px;'>
+                <h4 style='margin: 0 0 15px 0; color: #2c3e50;'>Guarantor Information</h4>
+            </div>
+        """, unsafe_allow_html=True)
+        
         num_guarantors = st.number_input("Number of Guarantors", min_value=0, max_value=3, value=1)
         if num_guarantors > 0:
-            guarantor_types = st.multiselect(
-                "Guarantor Type",
-                ["Business Owner", "Salaried Professional", "Property Owner", "Government Employee", 
-                 "Bank Employee", "Corporate Professional", "Others"],
-                ["Business Owner"]
-            )
-            if "Others" in guarantor_types:
-                other_guarantor_type = st.text_input("Specify Other Guarantor Type")
-            guarantor_relationship = st.selectbox(
-                "Primary Guarantor Relationship",
-                ["Family Member", "Business Partner", "Professional Associate", "Other"]
-            )
+            with st.container():
+                st.markdown("""
+                    <div style='background-color: white; padding: 15px; border-radius: 8px; border: 1px solid #e0e0e0;'>
+                """, unsafe_allow_html=True)
+                
+                guarantor_types = st.multiselect(
+                    "Guarantor Type",
+                    ["Business Owner", "Salaried Professional", "Property Owner", "Government Employee", 
+                     "Bank Employee", "Corporate Professional", "Others"],
+                    ["Business Owner"]
+                )
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    guarantor_relationship = st.selectbox(
+                        "Primary Guarantor Relationship",
+                        ["Family Member", "Business Partner", "Professional Associate", "Other"]
+                    )
+                
+                with col2:
+                    if "Others" in guarantor_types:
+                        other_guarantor_type = st.text_input("Specify Other Guarantor Type")
+                
+                st.markdown("</div>", unsafe_allow_html=True)
     
     if st.button("Assess Credit Risk", key="sme_assess"):
         # Prepare input data
@@ -458,16 +480,20 @@ with tab1:
         client_score = (ml_score * 0.6 + ai_score * 0.4)  # Combined score
         max_possible_loan = monthly_revenue * 8  # 8 months revenue for excellent clients
         min_suggested_loan = monthly_revenue * 4  # 4 months revenue for risky clients
+        optimal_loan = min(monthly_revenue * 6, loan_amount)  # 6 months revenue as baseline
         
         if client_score >= 8:
             recommended_loan = min(loan_amount * 1.2, max_possible_loan)  # Can offer 20% more
             loan_message = "💡 Based on your excellent profile, you qualify for a higher loan amount"
+            loan_color = "#1a5d1a"  # Dark green
         elif client_score >= 6:
-            recommended_loan = loan_amount  # Requested amount is fine
-            loan_message = "✓ Your requested loan amount is within acceptable range"
+            recommended_loan = min(loan_amount, optimal_loan)  # Based on revenue
+            loan_message = "✓ Recommended loan amount based on business revenue"
+            loan_color = "#1565c0"  # Blue
         else:
-            recommended_loan = min(loan_amount, min_suggested_loan)
-            loan_message = "⚠️ We recommend a lower loan amount to improve approval chances"
+            recommended_loan = min(loan_amount * 0.7, min_suggested_loan)  # 30% reduction
+            loan_message = "⚠️ Suggesting a lower amount to improve approval chances"
+            loan_color = "#8b4513"  # Brown
             
         optimal_term = min(loan_term, int(36 * (loan_amount / recommended_loan)))
         
@@ -490,64 +516,88 @@ with tab1:
         # Calculate combined score
         client_score = (ml_score * 0.6 + ai_score * 0.4)
         
-        # Scores Card with clear ML vs AI distinction
-        col1, col2 = st.columns(2)
+        # Improved Scoring Display with Toggle
+        st.markdown("### Credit Assessment Analysis")
+        score_type = st.radio("Select Analysis Type", ["Combined Analysis", "ML Analysis", "AI Analysis"], horizontal=True)
         
-        with col1:
+        if score_type == "Combined Analysis":
+            col1, col2, col3 = st.columns([1,2,1])
+            with col2:
+                st.markdown(f"""
+                <div style='background: linear-gradient(135deg, {color}22, {color}11);
+                     padding: 25px; border-radius: 15px; border: 2px solid {color}33; text-align: center;'>
+                    <h3 style='margin: 0; color: {color};'>Combined Score: {client_score:.1f}/10</h3>
+                    <div style='margin: 15px 0; color: #555;'>
+                        ML Score: {ml_score}/10 (60%) | AI Score: {ai_score:.1f}/10 (40%)
+                    </div>
+                    <div style='font-size: 14px; color: #666;'>
+                        Risk Level: {decision}
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+        
+        elif score_type == "ML Analysis":
             st.markdown("""
             <div style='background-color: #f8f9fa; padding: 20px; border-radius: 10px; border: 1px solid #e0e0e0;'>
-                <h4 style='margin: 0 0 15px 0; color: #2c3e50;'>Machine Learning Assessment</h4>
+                <h4 style='margin: 0 0 15px 0; color: #2c3e50;'>Machine Learning Detailed Analysis</h4>
             """, unsafe_allow_html=True)
             
-            st.metric("ML Credit Score", f"{ml_score}/10", "Primary Score")
-            st.metric("Default Probability", f"{ensemble_prob:.1%}", "Risk Assessment")
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric("ML Credit Score", f"{ml_score}/10", "Primary Score")
+                st.metric("Default Probability", f"{ensemble_prob:.1%}", "Risk Assessment")
+            with col2:
+                st.metric("Model Confidence", f"{(1-ensemble_prob)*100:.1f}%", "Approval Confidence")
+                st.metric("Risk Category", decision)
             
             st.markdown("</div>", unsafe_allow_html=True)
-            
-        with col2:
+        
+        else:  # AI Analysis
             st.markdown("""
             <div style='background-color: #f8f9fa; padding: 20px; border-radius: 10px; border: 1px solid #e0e0e0;'>
-                <h4 style='margin: 0 0 15px 0; color: #2c3e50;'>AI Assessment</h4>
+                <h4 style='margin: 0 0 15px 0; color: #2c3e50;'>AI Contextual Analysis</h4>
             """, unsafe_allow_html=True)
             
-            st.metric("AI Credit Score", f"{ai_score:.1f}/10", "Secondary Score")
-            st.metric("Combined Score", f"{client_score:.1f}/10", "Final Rating")
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric("AI Credit Score", f"{ai_score:.1f}/10", "Contextual Score")
+                st.metric("Risk Category", ai_reasoning)
+            with col2:
+                st.markdown("#### AI Insights")
+                st.write(ai_explanation)
             
             st.markdown("</div>", unsafe_allow_html=True)
         
-        # Risk Analysis Cards
-        st.markdown("### Risk Analysis")
-        col1, col2 = st.columns(2)
+        # Enhanced Risk Analysis Cards
+        st.markdown("### Comprehensive Risk Analysis")
+        analysis_type = st.radio("Analysis View", ["Risk Factors", "Business Health", "Financial Metrics"], horizontal=True)
         
-        with col1:
-            # Default Probability Breakdown
-            st.markdown("""
-            <div style='padding: 15px; border-radius: 5px; background-color: #ffffff; border: 1px solid #e0e0e0;'>
-                <h4>Default Risk Breakdown</h4>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Innovation: Comprehensive Risk Scoring
+        if analysis_type == "Risk Factors":
+            # Calculated Risk Components
             risk_components = {
                 'Business Stability': {
                     'score': min(10, years_in_business * 2),
                     'weight': 0.3,
-                    'status': 'Good' if years_in_business >= 3 else 'Needs Improvement'
+                    'status': 'Strong' if years_in_business >= 3 else 'Growing',
+                    'detail': f'Business age: {years_in_business:.1f} years'
                 },
                 'Financial Health': {
                     'score': min(10, (monthly_revenue / loan_amount) * 5),
                     'weight': 0.25,
-                    'status': 'Good' if monthly_revenue > loan_amount/24 else 'Needs Review'
+                    'status': 'Healthy' if monthly_revenue > loan_amount/24 else 'Moderate',
+                    'detail': f'Revenue to loan ratio: {(monthly_revenue*12/loan_amount):.1f}x'
                 },
                 'Credit Profile': {
                     'score': 10 if not previous_default else 3,
                     'weight': 0.25,
-                    'status': 'Good' if not previous_default else 'Attention Required'
+                    'status': 'Excellent' if not previous_default else 'Needs Attention',
+                    'detail': 'No defaults' if not previous_default else 'Has previous defaults'
                 },
-                'Banking Relationship': {
+                'Banking Profile': {
                     'score': min(10, bank_account_years * 2),
                     'weight': 0.2,
-                    'status': 'Good' if bank_account_years >= 3 else 'Building'
+                    'status': 'Established' if bank_account_years >= 3 else 'Developing',
+                    'detail': f'Banking history: {bank_account_years:.1f} years'
                 }
             }
             
