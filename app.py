@@ -22,16 +22,32 @@ st.set_page_config(page_title="Bangladesh Credit Scorer", layout="wide")
 st.markdown("""
     <style>
     .stApp {
-        background-color: white;
+        background-color: white !important;
+        padding: 0 !important;
     }
     .css-1d391kg {
-        background-color: white;
+        background-color: white !important;
+        padding: 0 !important;
     }
     .stTabs [data-baseweb="tab-list"] {
-        background-color: white;
+        background-color: white !important;
+        padding: 0 !important;
     }
     .stTabs [data-baseweb="tab"] {
-        background-color: white;
+        background-color: white !important;
+        padding: 0 !important;
+    }
+    /* Remove all unnecessary padding */
+    .block-container {
+        padding-top: 1rem !important;
+        padding-bottom: 0 !important;
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+    }
+    /* Remove white space between components */
+    .element-container {
+        margin: 0 !important;
+        padding: 0 !important;
     }
     h1, h2, h3, p, label, .stMarkdown {
         color: #000000 !important;
@@ -81,10 +97,17 @@ st.markdown("""
     }
     /* Card styling */
     div.element-container div.stMarkdown {
+        background-color: transparent;
+        padding: 0;
+        margin: 0;
+    }
+    /* Custom card class */
+    .custom-card {
         background-color: #ffffff;
         padding: 1rem;
         border-radius: 8px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        border: 1px solid #eee;
+        margin-bottom: 1rem;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -427,6 +450,9 @@ with tab1:
         
         # Display results in a structured format
         st.markdown("---")
+        
+        # Get AI assessment first
+        ai_explanation, ai_score, ai_reasoning = get_ai_assessment(input_data.iloc[0], api_key, api_choice)
         
         # Enhanced Dynamic Recommendations Engine
         client_score = (ml_score * 0.6 + ai_score * 0.4)  # Combined score
