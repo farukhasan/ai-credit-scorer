@@ -349,7 +349,7 @@ def get_ai_assessment(applicant_data, api_key, api_choice, ml_score=None, is_sme
         'business_stability': 0.20,
         'banking_profile': 0.20
     }
-    
+        
     # Analyze application data
     if is_sme:
         factors = {
@@ -373,19 +373,16 @@ def get_ai_assessment(applicant_data, api_key, api_choice, ml_score=None, is_sme
     if is_sme:
         revenue_coverage = applicant_data['monthly_revenue_bdt'] * 12 / applicant_data['loan_amount_bdt']
         business_stability = min(1, applicant_data['years_in_business'] / 5)
-        
         # Financial health score (0-10)
         financial_score = (
             (1 - min(debt_service_ratio, 1)) * 5 +  # Lower debt ratio is better
             min(revenue_coverage/2, 1) * 5           # Higher revenue coverage is better
         )
-        
         # Business stability score (0-10)
         stability_score = (
             business_stability * 6 +                    # Years in business
             (banking_score / 5) * 4                     # Banking relationship
         )
-        
         # Calculate weighted AI score
         ai_base_score = (
             financial_score * risk_weights['financial'] +
@@ -395,19 +392,16 @@ def get_ai_assessment(applicant_data, api_key, api_choice, ml_score=None, is_sme
         )
     else:
         salary_coverage = applicant_data['monthly_income_bdt'] * 12 / applicant_data['loan_amount_bdt']
-        base_score = (
-            (1 - debt_service_ratio) * 0.4 +
-            (salary_coverage/2) * 0.4 +
-            (1 - applicant_data['previous_loan_default']) * 0.2
-        ) * 10
-
-    # Incorporate ML score if available
-    if ml_score is not None:
-        final_score = (base_score * 0.6 + ml_score * 0.4)
-    else:
-        final_score = base_score
-        
-    final_score = max(1, min(10, final_score))
+        # Financial health score (0-10)
+        financial_score = (
+            (1 - min(debt_service_ratio, 1)) * 6 +
+            min(salary_coverage/2, 1) * 4
+        )
+        ai_base_score = (
+            financial_score * 0.6 +
+            (10 if not applicant_data['previous_loan_default'] else 3) * 0.4
+        )
+    final_score = max(1, min(10, ai_base_score))
     
     # Generate detailed analysis
     factors = []
@@ -459,13 +453,7 @@ def get_ai_assessment(applicant_data, api_key, api_choice, ml_score=None, is_sme
     else:
         strengths.append("Clean credit history")
 
-    # Calculate final score
-    if ml_score is not None:
-        final_score = base_score * 0.6 + ml_score * 0.4
-    else:
-        final_score = base_score
-
-    final_score = max(1, min(10, final_score))
+    # final_score is already set above from ai_base_score
     risk_level = "Low" if final_score >= 7 else "Moderate" if final_score >= 4 else "High"
 
     # Generate explanation
