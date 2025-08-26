@@ -45,13 +45,30 @@ st.markdown("""
     /* Button styling */
     .stButton > button {
         color: white;
-        background-color: #2c3e50;
-        border-radius: 5px;
-        padding: 10px 24px;
-        font-weight: 500;
+        background-color: #1e88e5;
+        border-radius: 8px;
+        padding: 12px 30px;
+        font-weight: 600;
+        font-size: 16px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin: 10px 0;
+        width: 100%;
+        transition: all 0.3s ease;
     }
     .stButton > button:hover {
-        background-color: #34495e;
+        background-color: #1565c0;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        transform: translateY(-1px);
+    }
+    /* Container styling */
+    div.element-container {
+        padding-bottom: 1rem;
+    }
+    /* Remove black spaces */
+    .main .block-container {
+        padding-top: 2rem;
+        padding-bottom: 0;
+        max-width: 1200px;
     }
     /* Metric styling */
     div[data-testid="stMetricValue"] {
@@ -356,9 +373,12 @@ with tab1:
         if num_guarantors > 0:
             guarantor_types = st.multiselect(
                 "Guarantor Type",
-                ["Business Owner", "Salaried Professional", "Property Owner", "Government Employee"],
+                ["Business Owner", "Salaried Professional", "Property Owner", "Government Employee", 
+                 "Bank Employee", "Corporate Professional", "Others"],
                 ["Business Owner"]
             )
+            if "Others" in guarantor_types:
+                other_guarantor_type = st.text_input("Specify Other Guarantor Type")
             guarantor_relationship = st.selectbox(
                 "Primary Guarantor Relationship",
                 ["Family Member", "Business Partner", "Professional Associate", "Other"]
@@ -408,31 +428,66 @@ with tab1:
         # Display results in a structured format
         st.markdown("---")
         
-        # Innovation: Dynamic Recommendations Engine
-        recommended_loan = min(loan_amount, monthly_revenue * 6)  # 6 months revenue cap
-        optimal_term = min(loan_term, int(36 * (loan_amount / recommended_loan)))  # Adjust term based on amount
+        # Enhanced Dynamic Recommendations Engine
+        client_score = (ml_score * 0.6 + ai_score * 0.4)  # Combined score
+        max_possible_loan = monthly_revenue * 8  # 8 months revenue for excellent clients
+        min_suggested_loan = monthly_revenue * 4  # 4 months revenue for risky clients
         
-        # Decision Card with Smart Recommendations
+        if client_score >= 8:
+            recommended_loan = min(loan_amount * 1.2, max_possible_loan)  # Can offer 20% more
+            loan_message = "💡 Based on your excellent profile, you qualify for a higher loan amount"
+        elif client_score >= 6:
+            recommended_loan = loan_amount  # Requested amount is fine
+            loan_message = "✓ Your requested loan amount is within acceptable range"
+        else:
+            recommended_loan = min(loan_amount, min_suggested_loan)
+            loan_message = "⚠️ We recommend a lower loan amount to improve approval chances"
+            
+        optimal_term = min(loan_term, int(36 * (loan_amount / recommended_loan)))
+        
+        # Modern Decision Card
         st.markdown(f"""
-        <div style='padding: 20px; border-radius: 10px; background-color: #f0f2f6; margin-bottom: 20px;'>
-            <h3 style='margin: 0; color: {color}; text-align: center;'>{decision}</h3>
-            <div style='text-align: center; margin-top: 10px; font-size: 0.9em; color: #666;'>
-                Recommended Loan: ৳{recommended_loan:,.0f} over {optimal_term} months
+        <div style='background: linear-gradient(135deg, {color}22, {color}11);
+             padding: 25px; border-radius: 15px; border: 2px solid {color}33;
+             margin-bottom: 30px; text-align: center;'>
+            <h2 style='color: {color}; margin: 0; font-size: 28px;'>{decision}</h2>
+            <div style='margin: 15px 0; font-size: 16px; color: #555;'>
+                {loan_message}<br/>
+                Recommended Amount: ৳{recommended_loan:,.0f} over {optimal_term} months
             </div>
         </div>
         """, unsafe_allow_html=True)
         
-        # Scores Card
-        col1, col2, col3 = st.columns(3)
-        # Get AI assessment before displaying metrics
+        # Get AI assessment
         ai_explanation, ai_score, ai_reasoning = get_ai_assessment(input_data.iloc[0], api_key, api_choice)
         
+        # Calculate combined score
+        client_score = (ml_score * 0.6 + ai_score * 0.4)
+        
+        # Scores Card with clear ML vs AI distinction
+        col1, col2 = st.columns(2)
+        
         with col1:
-            st.metric("Credit Score", f"{ml_score}/10", "ML Model Score")
+            st.markdown("""
+            <div style='background-color: #f8f9fa; padding: 20px; border-radius: 10px; border: 1px solid #e0e0e0;'>
+                <h4 style='margin: 0 0 15px 0; color: #2c3e50;'>Machine Learning Assessment</h4>
+            """, unsafe_allow_html=True)
+            
+            st.metric("ML Credit Score", f"{ml_score}/10", "Primary Score")
+            st.metric("Default Probability", f"{ensemble_prob:.1%}", "Risk Assessment")
+            
+            st.markdown("</div>", unsafe_allow_html=True)
+            
         with col2:
-            st.metric("Default Risk", f"{ensemble_prob:.1%}", "Probability")
-        with col3:
-            st.metric("AI Score", f"{ai_score:.1f}/10", "AI Assessment")
+            st.markdown("""
+            <div style='background-color: #f8f9fa; padding: 20px; border-radius: 10px; border: 1px solid #e0e0e0;'>
+                <h4 style='margin: 0 0 15px 0; color: #2c3e50;'>AI Assessment</h4>
+            """, unsafe_allow_html=True)
+            
+            st.metric("AI Credit Score", f"{ai_score:.1f}/10", "Secondary Score")
+            st.metric("Combined Score", f"{client_score:.1f}/10", "Final Rating")
+            
+            st.markdown("</div>", unsafe_allow_html=True)
         
         # Risk Analysis Cards
         st.markdown("### Risk Analysis")
@@ -635,7 +690,16 @@ with tab2:
 
 # Benchmark tab content
 with tab3:
-    st.header("Model Performance Benchmarks")
+    st.header("Credit Assessment Benchmarks")
+    
+    # Add benchmark selector
+    benchmark_view = st.radio(
+        "Select Benchmark View",
+        ["Model Performance", "Industry Statistics", "Regional Comparison"],
+        horizontal=True
+    )
+    
+    if benchmark_view == "Model Performance":
     
     # Calculate model performance metrics
     lr_pred = lr_model.predict_proba(X_test_scaled)[:, 1]
