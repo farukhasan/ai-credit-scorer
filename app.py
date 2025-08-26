@@ -16,7 +16,10 @@ import warnings
 warnings.filterwarnings('ignore')
 
 # Set page config
-st.set_page_config(page_title="Bangladesh Credit Scorer", layout="wide")
+st.set_page_config(page_title="Bangladesh Credit Scorer", layout="wide", initial_sidebar_state="collapsed")
+
+# Remove extra spacing at top
+st.write('<style>div.block-container{padding-top:0rem;}</style>', unsafe_allow_html=True)
 
 # Custom CSS for white background and minimal design
 st.markdown("""
@@ -313,42 +316,94 @@ def explain_ml_prediction(models, X_sample, feature_names, scaler):
     return positive_factors, negative_factors
 
 # AI Risk Assessment
-def get_ai_assessment(applicant_data, api_key, api_choice):
+def get_ai_assessment(applicant_data, api_key, api_choice, ml_score=None, is_sme=True):
     if not api_key:
         return "Please provide API key for AI assessment", 5, "AI API key not configured"
     
-    # Format applicant data for AI
-    context = f"""
-    Analyze this loan applicant from Bangladesh:
-    - Monthly Income: {applicant_data['monthly_income_bdt']:.0f} BDT
-    - Loan Amount: {applicant_data['loan_amount_bdt']:.0f} BDT
-    - Business Revenue: {applicant_data['monthly_revenue_bdt']:.0f} BDT
-    - Years in Business: {applicant_data['years_in_business']:.1f}
-    - Bank Transaction to Sales Ratio: {applicant_data['bank_transaction_sales_ratio']:.2f}
-    - Previous Default: {'Yes' if applicant_data['previous_loan_default'] else 'No'}
-    - Guarantor Available: {'Yes' if applicant_data['guarantor_available'] else 'No'}
-    - Mobile Banking User: {'Yes' if applicant_data['mobile_banking_user'] else 'No'}
+    # Calculate base risk score using key financial ratios
+    debt_service_ratio = applicant_data['loan_amount_bdt'] / (applicant_data['monthly_income_bdt'] * 12)
+    if is_sme:
+        revenue_coverage = applicant_data['monthly_revenue_bdt'] * 12 / applicant_data['loan_amount_bdt']
+        business_stability = min(1, applicant_data['years_in_business'] / 5)
+        base_score = (
+            (1 - debt_service_ratio) * 0.3 +
+            (revenue_coverage/2) * 0.3 +
+            business_stability * 0.2 +
+            (1 - applicant_data['previous_loan_default']) * 0.2
+        ) * 10
+    else:
+        salary_coverage = applicant_data['monthly_income_bdt'] * 12 / applicant_data['loan_amount_bdt']
+        base_score = (
+            (1 - debt_service_ratio) * 0.4 +
+            (salary_coverage/2) * 0.4 +
+            (1 - applicant_data['previous_loan_default']) * 0.2
+        ) * 10
+
+    # Incorporate ML score if available
+    if ml_score is not None:
+        final_score = (base_score * 0.6 + ml_score * 0.4)
+    else:
+        final_score = base_score
+        
+    final_score = max(1, min(10, final_score))
+    
+    # Generate detailed analysis
+    factors = []
+    if is_sme:
+        if debt_service_ratio > 0.5:
+            factors.append(f"High debt service ratio ({debt_service_ratio:.2f})")
+        if revenue_coverage < 1.5:
+            factors.append(f"Low revenue coverage ({revenue_coverage:.2f}x)")
+        if applicant_data['years_in_business'] < 3:
+            factors.append(f"Limited business history ({applicant_data['years_in_business']:.1f} years)")
+    else:
+        if debt_service_ratio > 0.4:
+            factors.append(f"High debt service ratio ({debt_service_ratio:.2f})")
+        if salary_coverage < 2:
+            factors.append(f"Low salary coverage ({salary_coverage:.2f}x)")
+    
+    if applicant_data['previous_loan_default']:
+        factors.append("Previous default history")
     
     Provide a brief risk assessment considering Bangladesh's economic context.
     Rate the credit risk from 1-10 (10 being lowest risk).
     Explain in 2-3 sentences why this applicant might default.
     """
     
-    # Simulate AI response (replace with actual API call)
-    if api_choice == "Google Gemini":
-        # Here you would make actual API call to Gemini
-        explanation = f"""Based on Bangladesh market analysis: The applicant shows moderate risk. 
-        Main concerns: Debt-to-income ratio of {applicant_data['loan_amount_bdt']/applicant_data['monthly_income_bdt']/12:.2f} 
-        and limited bank transaction history ({applicant_data['bank_transaction_sales_ratio']:.2f} ratio) suggest informal economy participation.
-        Positive factors include {'guarantor availability' if applicant_data['guarantor_available'] else 'lack of guarantor'} 
-        and {'mobile banking adoption' if applicant_data['mobile_banking_user'] else 'limited digital footprint'}."""
-        
-        ai_score = 6 + np.random.normal(0, 1)
-    else:
-        explanation = "AI assessment requires valid API configuration"
-        ai_score = 5
+    # Generate detailed assessment
+    risk_level = "Low" if final_score >= 7 else "Moderate" if final_score >= 4 else "High"
     
-    return explanation, max(1, min(10, ai_score)), "Risk factors identified through contextual analysis"
+    if factors:
+        risk_factors = "Key risk factors include: " + "; ".join(factors)
+    else:
+        risk_factors = "No significant risk factors identified."
+    
+    business_context = "SME business" if is_sme else "Salaried professional"
+    
+    explanation = f"""Based on comprehensive analysis of this {business_context} application in Bangladesh:
+    
+    Risk Level: {risk_level} (Score: {final_score:.1f}/10)
+    
+    {risk_factors}
+    
+    {'Business shows ' if is_sme else 'Application shows '}
+    {
+        'strong potential with manageable risk levels.' if final_score >= 7 else
+        'moderate risk with some concerns that need attention.' if final_score >= 4 else
+        'significant risk factors that require careful consideration.'
+    }
+    
+    {'Business stability and revenue generation are key strengths.' if is_sme and final_score >= 7 else
+     'Stable employment and income levels support the application.' if not is_sme and final_score >= 7 else
+     'Additional risk mitigation measures are recommended.' if final_score >= 4 else
+     'Significant improvements needed in financial metrics.'}
+    """
+    
+    return (
+        explanation,
+        final_score,
+        f"{'Business' if is_sme else 'Personal'} risk assessment completed"
+    )
 
 # Main Application
 tab1, tab2, tab3 = st.tabs(["SME Business", "Employed Businessman", "Benchmark"])
@@ -382,20 +437,28 @@ with tab1:
         years_in_business = st.number_input("Years in Business", min_value=0.0, max_value=50.0, value=3.0)
         monthly_revenue = st.number_input("Monthly Revenue (BDT)", min_value=10000, max_value=10000000, value=150000)
         employees = st.number_input("Number of Employees", min_value=0, max_value=500, value=5)
+        location_type = st.selectbox("Location Type", ["Urban", "Semi-Urban", "Rural"])
+        inventory_days = st.number_input("Inventory Turnover Days", min_value=0, max_value=365, value=30)
         
     with col2:
-        st.subheader("Loan Details")
+        st.subheader("Financial Details")
         loan_amount = st.number_input("Loan Amount (BDT)", min_value=10000, max_value=50000000, value=500000)
         loan_term = st.selectbox("Loan Term (Months)", [12, 24, 36, 48, 60])
-        monthly_income = st.number_input("Monthly Income (BDT)", min_value=10000, max_value=1000000, value=80000)
         existing_loans = st.number_input("Existing Loans", min_value=0, max_value=10, value=0)
+        gross_margin = st.slider("Gross Profit Margin (%)", 0, 100, 30)
+        working_capital_days = st.number_input("Working Capital Days", min_value=0, max_value=365, value=45)
         
     with col3:
-        st.subheader("Banking & Credit History")
+        st.subheader("Credit & Banking")
         bank_account_years = st.number_input("Bank Account Age (Years)", min_value=0.0, max_value=50.0, value=2.0)
         mobile_banking = st.checkbox("Mobile Banking User", value=True)
-        bank_trans_ratio = st.slider("Bank Transaction to Sales Ratio", 0.0, 1.0, 0.6)
         previous_default = st.checkbox("Previous Loan Default")
+        num_guarantors = st.selectbox("Number of Guarantors", [1, 2, 3])
+        guarantor_types = st.multiselect(
+            "Guarantor Types",
+            ["Business Owner", "Salaried Professional", "Property Owner", "Government Employee"],
+            ["Business Owner"]
+        )
         st.markdown("""
             <div style='background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-top: 20px;'>
                 <h4 style='margin: 0 0 15px 0; color: #2c3e50;'>Guarantor Information</h4>
@@ -665,11 +728,12 @@ with tab2:
     with col1:
         st.subheader("Personal Information")
         age = st.number_input("Age", min_value=18, max_value=70, value=35, key="emp_age")
-        family_members = st.number_input("Family Members", min_value=1, max_value=15, value=4, key="emp_family")
         education = st.selectbox("Education Level", 
             ["Primary", "Secondary", "Higher Secondary", "Bachelor's", "Master's"], key="emp_edu")
         location = st.selectbox("Division", 
             ["Dhaka", "Chittagong", "Rajshahi", "Khulna", "Barisal", "Sylhet", "Rangpur", "Mymensingh"], key="emp_loc")
+        location_type = st.selectbox("Location Type", ["Urban", "Semi-Urban", "Rural"], key="emp_loc_type")
+        years_at_job = st.number_input("Years at Current Job", min_value=0.0, max_value=40.0, value=2.0, key="emp_job_years")
         
     with col2:
         st.subheader("Employment & Income")
@@ -678,14 +742,20 @@ with tab2:
         monthly_salary = st.number_input("Monthly Salary (BDT)", min_value=10000, max_value=500000, value=60000, key="emp_salary")
         side_business_income = st.number_input("Side Business Income (BDT)", min_value=0, max_value=500000, value=20000, key="emp_side")
         loan_amount_emp = st.number_input("Loan Amount (BDT)", min_value=10000, max_value=10000000, value=300000, key="emp_loan")
+        loan_term_emp = st.selectbox("Loan Term (Months)", [12, 24, 36, 48, 60], key="emp_term")
         
     with col3:
-        st.subheader("Financial History")
+        st.subheader("Credit & Banking")
         bank_years_emp = st.number_input("Banking History (Years)", min_value=0.0, max_value=50.0, value=5.0, key="emp_bank")
         mobile_banking_emp = st.checkbox("Mobile Banking User", value=True, key="emp_mobile")
-        trans_ratio_emp = st.slider("Bank Transaction Ratio", 0.0, 1.0, 0.8, key="emp_ratio")
-        default_emp = st.checkbox("Previous Default", key="emp_default")
-        guarantor_emp = st.checkbox("Guarantor Available", value=True, key="emp_guarantor")
+        previous_default = st.checkbox("Previous Default", key="emp_default")
+        num_guarantors = st.selectbox("Number of Guarantors", [1, 2, 3], key="emp_num_guarantors")
+        guarantor_types = st.multiselect(
+            "Guarantor Types",
+            ["Salaried Professional", "Government Employee", "Bank Employee", "Corporate Professional"],
+            ["Salaried Professional"],
+            key="emp_guarantor_types"
+        )
     
     if st.button("Assess Credit Risk", key="emp_assess"):
         # Similar assessment logic as SME tab
