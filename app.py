@@ -5,7 +5,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
-from sklearn.metrics import roc_auc_score, roc_curve, confusion_matrix, classification_report
+from sklearn.metrics import roc_auc_score, roc_curve, confusion_matrix, classification_report, f1_score
 import matplotlib.pyplot as plt
 import seaborn as sns
 import requests
@@ -42,11 +42,39 @@ st.markdown("""
     .stMarkdown {
         font-weight: 500;
     }
+    /* Button styling */
+    .stButton > button {
+        color: white;
+        background-color: #2c3e50;
+        border-radius: 5px;
+        padding: 10px 24px;
+        font-weight: 500;
+    }
+    .stButton > button:hover {
+        background-color: #34495e;
+    }
+    /* Metric styling */
+    div[data-testid="stMetricValue"] {
+        font-size: 24px;
+        font-weight: 600;
+    }
+    /* Tab styling */
+    .stTabs [data-baseweb="tab"] {
+        font-weight: 500;
+    }
+    /* Card styling */
+    div.element-container div.stMarkdown {
+        background-color: #ffffff;
+        padding: 1rem;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
     </style>
 """, unsafe_allow_html=True)
 
-# Title
-st.title("🏦 Bangladesh Credit Risk Assessment System")
+# Title and subtitle
+st.title("CreditIQ")
+st.markdown("##### Advanced Credit Risk Intelligence System")
 st.markdown("---")
 
 # Initialize session state
@@ -193,11 +221,11 @@ def calculate_credit_score(default_prob):
 # Get decision
 def get_decision(score):
     if score >= 7:
-        return "✅ APPROVE", "green"
+        return "APPROVE", "#1a5d1a"  # Dark green
     elif score >= 4:
-        return "⚠️ FURTHER REVIEW", "orange"
+        return "REVIEW REQUIRED", "#8b4513"  # Saddle brown
     else:
-        return "❌ REJECT", "red"
+        return "DECLINE", "#7c0a02"  # Dark red
 
 # Get improvement suggestions
 def get_improvement_suggestion(feature):
@@ -323,7 +351,18 @@ with tab1:
         mobile_banking = st.checkbox("Mobile Banking User", value=True)
         bank_trans_ratio = st.slider("Bank Transaction to Sales Ratio", 0.0, 1.0, 0.6)
         previous_default = st.checkbox("Previous Loan Default")
-        guarantor = st.checkbox("Guarantor Available", value=True)
+        st.subheader("Guarantor Information")
+        num_guarantors = st.number_input("Number of Guarantors", min_value=0, max_value=3, value=1)
+        if num_guarantors > 0:
+            guarantor_types = st.multiselect(
+                "Guarantor Type",
+                ["Business Owner", "Salaried Professional", "Property Owner", "Government Employee"],
+                ["Business Owner"]
+            )
+            guarantor_relationship = st.selectbox(
+                "Primary Guarantor Relationship",
+                ["Family Member", "Business Partner", "Professional Associate", "Other"]
+            )
     
     if st.button("Assess Credit Risk", key="sme_assess"):
         # Prepare input data
@@ -348,7 +387,7 @@ with tab1:
             'bank_transaction_sales_ratio': [bank_trans_ratio],
             'previous_loan_default': [1 if previous_default else 0],
             'utility_bill_delays': [0],
-            'guarantor_available': [1 if guarantor else 0],
+            'guarantor_available': [1 if num_guarantors > 0 else 0],
             'social_capital_score': [0.7],
             'religious_donations_regular': [1],
             'debt_to_income_ratio': [loan_amount / (monthly_income * 12)],
@@ -366,45 +405,118 @@ with tab1:
         ml_score = calculate_credit_score(ensemble_prob)
         decision, color = get_decision(ml_score)
         
-        # Display results
+        # Display results in a structured format
         st.markdown("---")
-        st.subheader("Assessment Results")
         
+        # Innovation: Dynamic Recommendations Engine
+        recommended_loan = min(loan_amount, monthly_revenue * 6)  # 6 months revenue cap
+        optimal_term = min(loan_term, int(36 * (loan_amount / recommended_loan)))  # Adjust term based on amount
+        
+        # Decision Card with Smart Recommendations
+        st.markdown(f"""
+        <div style='padding: 20px; border-radius: 10px; background-color: #f0f2f6; margin-bottom: 20px;'>
+            <h3 style='margin: 0; color: {color}; text-align: center;'>{decision}</h3>
+            <div style='text-align: center; margin-top: 10px; font-size: 0.9em; color: #666;'>
+                Recommended Loan: ৳{recommended_loan:,.0f} over {optimal_term} months
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Scores Card
+        col1, col2, col3 = st.columns(3)
+        # Get AI assessment before displaying metrics
+        ai_explanation, ai_score, ai_reasoning = get_ai_assessment(input_data.iloc[0], api_key, api_choice)
+        
+        with col1:
+            st.metric("Credit Score", f"{ml_score}/10", "ML Model Score")
+        with col2:
+            st.metric("Default Risk", f"{ensemble_prob:.1%}", "Probability")
+        with col3:
+            st.metric("AI Score", f"{ai_score:.1f}/10", "AI Assessment")
+        
+        # Risk Analysis Cards
+        st.markdown("### Risk Analysis")
         col1, col2 = st.columns(2)
         
         with col1:
-            st.markdown("### ML Model Assessment")
-            st.metric("Credit Score", f"{ml_score}/10")
-            st.metric("Default Probability", f"{ensemble_prob:.2%}")
-            st.metric("Decision", decision)
+            # Default Probability Breakdown
+            st.markdown("""
+            <div style='padding: 15px; border-radius: 5px; background-color: #ffffff; border: 1px solid #e0e0e0;'>
+                <h4>Default Risk Breakdown</h4>
+            </div>
+            """, unsafe_allow_html=True)
             
-            # ML Explanation
-            st.markdown("#### Risk Factors Analysis")
+            # Innovation: Comprehensive Risk Scoring
+            risk_components = {
+                'Business Stability': {
+                    'score': min(10, years_in_business * 2),
+                    'weight': 0.3,
+                    'status': 'Good' if years_in_business >= 3 else 'Needs Improvement'
+                },
+                'Financial Health': {
+                    'score': min(10, (monthly_revenue / loan_amount) * 5),
+                    'weight': 0.25,
+                    'status': 'Good' if monthly_revenue > loan_amount/24 else 'Needs Review'
+                },
+                'Credit Profile': {
+                    'score': 10 if not previous_default else 3,
+                    'weight': 0.25,
+                    'status': 'Good' if not previous_default else 'Attention Required'
+                },
+                'Banking Relationship': {
+                    'score': min(10, bank_account_years * 2),
+                    'weight': 0.2,
+                    'status': 'Good' if bank_account_years >= 3 else 'Building'
+                }
+            }
+            
+            for component, details in risk_components.items():
+                score = details['score'] * details['weight']
+                st.markdown(f"""
+                <div style='padding: 10px; border-radius: 5px; background-color: #ffffff; border: 1px solid #e0e0e0; margin: 5px 0;'>
+                    <div style='display: flex; justify-content: space-between; align-items: center;'>
+                        <strong>{component}</strong>
+                        <span style='color: {"#1a5d1a" if details["status"] == "Good" else "#8b4513"}'>
+                            {details["status"]}
+                        </span>
+                    </div>
+                    <div style='background-color: #e3f2fd; width: {details["score"]*10}%; height: 6px; border-radius: 3px; margin: 5px 0;'></div>
+                    <small>Contribution: {score:.1f} points</small>
+                </div>
+                """, unsafe_allow_html=True)
+        
+        with col2:
+            # Strengths & Weaknesses
             positive_factors, negative_factors = explain_ml_prediction(
                 models, input_data.values[0], feature_columns, scaler
             )
             
-            st.markdown("##### Default Probability Analysis")
-            prob_factors = {
-                'Base Rate': 0.123,  # Industry average
-                'Business Factors': ensemble_prob * 0.4,
-                'Financial Factors': ensemble_prob * 0.35,
-                'Credit History': ensemble_prob * 0.25
-            }
-            for factor, prob in prob_factors.items():
-                st.write(f"• {factor}: {prob:.2%}")
-
-            st.markdown("##### Positive Factors")
+            st.markdown("""
+            <div style='padding: 15px; border-radius: 5px; background-color: #ffffff; border: 1px solid #e0e0e0;'>
+                <h4>Key Strengths</h4>
+            </div>
+            """, unsafe_allow_html=True)
+            
             for _, row in positive_factors.iterrows():
                 feature = row['Feature'].replace('_', ' ').title()
-                st.write(f"• {feature} → Reduces risk by {abs(row['Contribution']):.2f} points")
-            
-            st.markdown("##### Areas for Improvement")
-            for _, row in negative_factors.iterrows():
-                feature = row['Feature'].replace('_', ' ').title()
-                improvement = get_improvement_suggestion(feature)
-                st.write(f"• {feature} → Risk impact: {abs(row['Contribution']):.2f} points")
-                st.info(improvement)
+                st.markdown(f"""
+                <div style='padding: 10px; margin: 5px 0; background-color: #e8f5e9; border-radius: 5px;'>
+                    <strong>{feature}</strong><br/>
+                    Impact: {abs(row['Contribution']):.2f} points
+                </div>
+                """, unsafe_allow_html=True)
+        
+        # Improvement Areas Card
+        st.markdown("### Areas for Improvement")
+        for _, row in negative_factors.iterrows():
+            feature = row['Feature'].replace('_', ' ').title()
+            improvement = get_improvement_suggestion(feature)
+            st.markdown(f"""
+            <div style='padding: 15px; margin: 10px 0; background-color: #fff3e0; border-radius: 5px;'>
+                <strong>{feature}</strong> (Risk Impact: {abs(row['Contribution']):.2f} points)<br/>
+                {improvement}
+            </div>
+            """, unsafe_allow_html=True)
         
         with col2:
             st.markdown("### AI Assessment")
@@ -523,72 +635,99 @@ with tab2:
 
 # Benchmark tab content
 with tab3:
-    st.header("Industry Benchmark Analysis")
+    st.header("Model Performance Benchmarks")
     
-    # Display industry average metrics
-    st.subheader("Industry Average Metrics")
+    # Calculate model performance metrics
+    lr_pred = lr_model.predict_proba(X_test_scaled)[:, 1]
+    rf_pred = rf_model.predict_proba(X_test_scaled)[:, 1]
+    gb_pred = gb_model.predict_proba(X_test_scaled)[:, 1]
+    ensemble_pred = ensemble_predict(models, X_test_scaled)
+    
+    lr_auc = roc_auc_score(y_test, lr_pred)
+    rf_auc = roc_auc_score(y_test, rf_pred)
+    gb_auc = roc_auc_score(y_test, gb_pred)
+    ensemble_auc = roc_auc_score(y_test, ensemble_pred)
+
+    # Display model performance metrics in cards
+    st.markdown("### Model Performance Metrics")
     col1, col2 = st.columns(2)
     
     with col1:
-        st.metric("Avg. Default Rate", "12.3%")
-        st.metric("Avg. Loan Size", "৳450,000")
-        st.metric("Avg. Business Age", "4.2 years")
+        st.markdown("""
+        <div style='padding: 20px; border-radius: 10px; background-color: #f8f9fa; margin-bottom: 20px;'>
+            <h4 style='margin-top: 0;'>Individual Model Performance</h4>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        metrics = {
+            'Logistic Regression': {
+                'AUC': lr_auc,
+                'Accuracy': lr_model.score(X_test_scaled, y_test)
+            },
+            'Random Forest': {
+                'AUC': rf_auc,
+                'Accuracy': rf_model.score(X_test_scaled, y_test)
+            },
+            'Gradient Boosting': {
+                'AUC': gb_auc,
+                'Accuracy': gb_model.score(X_test_scaled, y_test)
+            }
+        }
+        
+        for model_name, scores in metrics.items():
+            st.markdown(f"""
+            <div style='padding: 15px; border-radius: 5px; background-color: #ffffff; border: 1px solid #e0e0e0; margin: 10px 0;'>
+                <h5 style='margin: 0;'>{model_name}</h5>
+                <p style='margin: 5px 0;'>AUC Score: {scores['AUC']:.4f}</p>
+                <p style='margin: 5px 0;'>Accuracy: {scores['Accuracy']:.4f}</p>
+            </div>
+            """, unsafe_allow_html=True)
     
     with col2:
-        st.metric("Avg. Credit Score", "6.8/10")
-        st.metric("Avg. Debt-to-Income", "35%")
-        st.metric("Approval Rate", "68%")
+        st.markdown("""
+        <div style='padding: 20px; border-radius: 10px; background-color: #f8f9fa; margin-bottom: 20px;'>
+            <h4 style='margin-top: 0;'>Ensemble Model Performance</h4>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.metric("Ensemble AUC Score", f"{ensemble_auc:.4f}", "Combined Performance")
+        st.metric("Accuracy", f"{((ensemble_pred > 0.5) == y_test).mean():.4f}", "Overall Accuracy")
+        st.metric("F1 Score", f"{f1_score(y_test, ensemble_pred > 0.5):.4f}", "Balance Score")
     
-    # Risk factors table
-    st.subheader("Key Risk Factor Thresholds")
-    risk_df = pd.DataFrame({
-        'Risk Factor': [
-            'Debt-to-Income Ratio',
-            'Revenue to Loan Ratio',
-            'Bank Account Age',
-            'Business Age',
-            'Credit Score',
-        ],
-        'Low Risk': ['< 30%', '> 3.0', '> 3 years', '> 5 years', '> 7.5'],
-        'Medium Risk': ['30-45%', '2.0-3.0', '1-3 years', '2-5 years', '5.0-7.5'],
-        'High Risk': ['> 45%', '< 2.0', '< 1 year', '< 2 years', '< 5.0']
-    })
-    st.table(risk_df)
+    # Feature importance analysis
+    st.markdown("### Feature Importance Analysis")
     
-    # Rejection improvement suggestions
-    st.subheader("Rejection Improvement Guide")
-    improvements = {
-        'Debt-to-Income Ratio': [
-            '• Increase monthly income through business expansion',
-            '• Reduce existing debt obligations',
-            '• Request a lower loan amount'
-        ],
-        'Revenue Performance': [
-            '• Improve sales and revenue collection',
-            '• Strengthen business model efficiency',
-            '• Maintain proper financial records'
-        ],
-        'Banking History': [
-            '• Increase formal banking transactions',
-            '• Maintain regular account activity',
-            '• Build banking relationships'
-        ],
-        'Business Stability': [
-            '• Document business growth trajectory',
-            '• Maintain consistent operations',
-            '• Keep proper business records'
-        ],
-        'Credit History': [
-            '• Clear any outstanding defaults',
-            '• Make timely bill payments',
-            '• Build positive credit history'
-        ]
-    }
+    # Get feature importance from Random Forest
+    feature_importance = pd.DataFrame({
+        'Feature': feature_columns,
+        'Importance': rf_model.feature_importances_
+    }).sort_values('Importance', ascending=False).head(10)
     
-    for category, tips in improvements.items():
-        st.markdown(f"**{category}:**")
-        for tip in tips:
-            st.write(tip)
+    st.markdown("""
+    <div style='padding: 20px; border-radius: 10px; background-color: #f8f9fa; margin: 20px 0;'>
+        <h4 style='margin-top: 0;'>Top 10 Most Important Features</h4>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    for _, row in feature_importance.iterrows():
+        st.markdown(f"""
+        <div style='padding: 10px; border-radius: 5px; background-color: #ffffff; border: 1px solid #e0e0e0; margin: 5px 0;'>
+            <strong>{row['Feature'].replace('_', ' ').title()}</strong>
+            <div style='background-color: #e3f2fd; width: {row['Importance']*100:.1f}%; height: 10px; border-radius: 5px;'></div>
+            <small>Importance: {row['Importance']:.4f}</small>
+        </div>
+        """, unsafe_allow_html=True)
+        
+    # Model validation info
+    st.markdown("""
+    <div style='padding: 20px; border-radius: 10px; background-color: #f8f9fa; margin: 20px 0;'>
+        <h4 style='margin-top: 0;'>Model Validation Information</h4>
+        <p style='margin: 5px 0;'>• Test set size: 20% of total data</p>
+        <p style='margin: 5px 0;'>• Stratified sampling used</p>
+        <p style='margin: 5px 0;'>• Features standardized using StandardScaler</p>
+        <p style='margin: 5px 0;'>• Ensemble weights: LR(0.3), RF(0.35), GB(0.35)</p>
+    </div>
+    """, unsafe_allow_html=True)
     
 # Footer
 st.markdown("---")
