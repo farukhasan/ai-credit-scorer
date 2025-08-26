@@ -340,6 +340,16 @@ def get_ai_assessment(applicant_data, api_key, api_choice, ml_score=None, is_sme
     risk_factors = []
     strengths = []
     
+    # Calculate AI score based on multiple factors
+    ai_base_score = 0
+    max_score = 10
+    risk_weights = {
+        'financial': 0.35,
+        'credit_history': 0.25,
+        'business_stability': 0.20,
+        'banking_profile': 0.20
+    }
+    
     # Analyze application data
     if is_sme:
         factors = {
@@ -356,17 +366,33 @@ def get_ai_assessment(applicant_data, api_key, api_choice, ml_score=None, is_sme
             'credit_history': not applicant_data['previous_loan_default']
         }
     
-    # Calculate base risk score using key financial ratios
+    # Calculate detailed AI risk assessment
     debt_service_ratio = applicant_data['loan_amount_bdt'] / (applicant_data['monthly_income_bdt'] * 12)
+    banking_score = applicant_data['bank_account_years'] * (1 if applicant_data['mobile_banking_user'] else 0.8)
+    
     if is_sme:
         revenue_coverage = applicant_data['monthly_revenue_bdt'] * 12 / applicant_data['loan_amount_bdt']
         business_stability = min(1, applicant_data['years_in_business'] / 5)
-        base_score = (
-            (1 - debt_service_ratio) * 0.3 +
-            (revenue_coverage/2) * 0.3 +
-            business_stability * 0.2 +
-            (1 - applicant_data['previous_loan_default']) * 0.2
-        ) * 10
+        
+        # Financial health score (0-10)
+        financial_score = (
+            (1 - min(debt_service_ratio, 1)) * 5 +  # Lower debt ratio is better
+            min(revenue_coverage/2, 1) * 5           # Higher revenue coverage is better
+        )
+        
+        # Business stability score (0-10)
+        stability_score = (
+            business_stability * 6 +                    # Years in business
+            (banking_score / 5) * 4                     # Banking relationship
+        )
+        
+        # Calculate weighted AI score
+        ai_base_score = (
+            financial_score * risk_weights['financial'] +
+            (10 if not applicant_data['previous_loan_default'] else 3) * risk_weights['credit_history'] +
+            stability_score * risk_weights['business_stability'] +
+            (banking_score * 2) * risk_weights['banking_profile']
+        )
     else:
         salary_coverage = applicant_data['monthly_income_bdt'] * 12 / applicant_data['loan_amount_bdt']
         base_score = (
@@ -538,12 +564,6 @@ with tab1:
         mobile_banking = st.checkbox("Mobile Banking User", value=True)
         previous_default = st.checkbox("Previous Loan Default")
         
-        st.markdown("""
-            <div style='background-color: #f8f9fa; padding: 15px; border-radius: 10px; margin-top: 20px;'>
-                <h4 style='margin: 0 0 15px 0; color: #2c3e50;'>Guarantor Information</h4>
-            </div>
-        """, unsafe_allow_html=True)
-        
         num_guarantors = st.selectbox(
             "Number of Guarantors",
             ["0", "1", "2", "3", "3+"],
@@ -551,32 +571,27 @@ with tab1:
         )
         
         if num_guarantors != "0":
-            with st.container():
-                st.markdown("""
-                    <div style='background-color: white; padding: 15px; border-radius: 8px; border: 1px solid #e0e0e0;'>
-                """, unsafe_allow_html=True)
-                
-                guarantor_types = st.multiselect(
-                    "Guarantor Type(s)",
-                    [
-                        "Business Owner",
-                        "Salaried Professional",
-                        "Property Owner", 
-                        "Government Employee",
-                        "Bank Employee",
-                        "Corporate Professional"
-                    ],
-                    ["Business Owner"],
-                    help="Select one or more guarantor types"
-                )
-                
-                guarantor_relationship = st.selectbox(
-                    "Primary Guarantor Relationship",
-                    ["Family Member", "Business Partner", "Professional Associate", "Friend"],
-                    help="Select the relationship with the primary guarantor"
-                )
-                
-                st.markdown("</div>", unsafe_allow_html=True)
+            guarantor_types = st.multiselect(
+                "Guarantor Type(s)",
+                [
+                    "Business Owner",
+                    "Salaried Professional",
+                    "Property Owner", 
+                    "Government Employee",
+                    "Bank Employee",
+                    "Corporate Professional",
+                    "Others"
+                ],
+                ["Business Owner"]
+            )
+            
+            if "Others" in guarantor_types:
+                other_guarantor = st.text_input("Specify Other Guarantor Type")
+            
+            guarantor_relationship = st.selectbox(
+                "Primary Guarantor Relationship",
+                ["Family Member", "Business Partner", "Professional Associate", "Friend", "Other"]
+            )
     
     if st.button("Assess Credit Risk", key="sme_assess"):
         # Calculate derived values
@@ -843,18 +858,35 @@ with tab2:
         mobile_banking_emp = st.checkbox("Mobile Banking User", value=True, key="emp_mobile")
         previous_default = st.checkbox("Previous Default", key="emp_default")
         
-        st.markdown("""
-            <div style='background-color: #f8f9fa; padding: 15px; border-radius: 10px; margin-top: 20px;'>
-                <h4 style='margin: 0 0 15px 0; color: #2c3e50;'>Guarantor Information</h4>
-            </div>
-        """, unsafe_allow_html=True)
-        
         num_guarantors = st.selectbox(
             "Number of Guarantors",
             ["0", "1", "2", "3", "3+"],
             index=1,
             key="emp_num_guarantors"
         )
+        
+        if num_guarantors != "0":
+            guarantor_types = st.multiselect(
+                "Guarantor Type(s)",
+                [
+                    "Salaried Professional",
+                    "Government Employee",
+                    "Bank Employee",
+                    "Corporate Professional",
+                    "Others"
+                ],
+                ["Salaried Professional"],
+                key="emp_guarantor_types"
+            )
+            
+            if "Others" in guarantor_types:
+                other_guarantor = st.text_input("Specify Other Guarantor Type", key="emp_other_guarantor")
+            
+            guarantor_relationship = st.selectbox(
+                "Primary Guarantor Relationship",
+                ["Family Member", "Professional Associate", "Friend", "Other"],
+                key="emp_guarantor_relation"
+            )
     
     if st.button("Assess Credit Risk", key="emp_assess"):
         # Calculate derived values
