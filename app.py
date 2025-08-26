@@ -16,10 +16,26 @@ import warnings
 warnings.filterwarnings('ignore')
 
 # Set page config
-st.set_page_config(page_title="Bangladesh Credit Scorer", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(
+    page_title="Bangladesh Credit Scorer",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
 
-# Remove extra spacing at top
-st.write('<style>div.block-container{padding-top:0rem;}</style>', unsafe_allow_html=True)
+# Add spacing for title
+st.write('<style>div.block-container{padding-top:1rem;}</style>', unsafe_allow_html=True)
+
+# Custom CSS for spacing and design
+st.write('''
+    <style>
+        div.block-container {padding-top:2rem;}
+        div[data-testid="stSidebarContent"] {padding-top: 3rem;}
+        div.st-emotion-cache-1v0mbdj.e115fcil1 {margin-top: 1.5rem;}
+        .st-emotion-cache-pkbazv {row-gap: 1em;}
+        .stMarkdown {padding-top: 0.5rem;}
+        .css-1544g2n {margin-top: 0;}
+    </style>
+''', unsafe_allow_html=True)
 
 # Custom CSS for white background and minimal design
 st.markdown("""
@@ -320,6 +336,10 @@ def get_ai_assessment(applicant_data, api_key, api_choice, ml_score=None, is_sme
     if not api_key:
         return "Please provide API key for AI assessment", 5, "AI API key not configured"
     
+    # Initialize explanation components
+    risk_factors = []
+    strengths = []
+    
     # Calculate base risk score using key financial ratios
     debt_service_ratio = applicant_data['loan_amount_bdt'] / (applicant_data['monthly_income_bdt'] * 12)
     if is_sme:
@@ -370,13 +390,61 @@ def get_ai_assessment(applicant_data, api_key, api_choice, ml_score=None, is_sme
     Explain in 2-3 sentences why this applicant might default.
     """
     
-    # Generate detailed assessment
-    risk_level = "Low" if final_score >= 7 else "Moderate" if final_score >= 4 else "High"
-    
-    if factors:
-        risk_factors = "Key risk factors include: " + "; ".join(factors)
+    # Analyze risk factors
+    if is_sme:
+        if debt_service_ratio > 0.5:
+            risk_factors.append(f"Debt service ratio ({debt_service_ratio:.2f}) above recommended level")
+        else:
+            strengths.append(f"Healthy debt service ratio of {debt_service_ratio:.2f}")
+
+        if revenue_coverage < 1.5:
+            risk_factors.append(f"Low revenue coverage ({revenue_coverage:.2f}x)")
+        else:
+            strengths.append(f"Strong revenue coverage of {revenue_coverage:.2f}x")
+
+        if business_stability < 0.6:
+            risk_factors.append(f"Limited business history ({applicant_data['years_in_business']:.1f} years)")
+        else:
+            strengths.append(f"Established business ({applicant_data['years_in_business']:.1f} years)")
     else:
-        risk_factors = "No significant risk factors identified."
+        if debt_service_ratio > 0.4:
+            risk_factors.append(f"High debt service ratio ({debt_service_ratio:.2f})")
+        else:
+            strengths.append(f"Manageable debt service ratio of {debt_service_ratio:.2f}")
+
+    if applicant_data['previous_loan_default']:
+        risk_factors.append("Previous default history")
+    else:
+        strengths.append("Clean credit history")
+
+    # Calculate final score
+    if ml_score is not None:
+        final_score = base_score * 0.6 + ml_score * 0.4
+    else:
+        final_score = base_score
+
+    final_score = max(1, min(10, final_score))
+    risk_level = "Low" if final_score >= 7 else "Moderate" if final_score >= 4 else "High"
+
+    # Generate explanation
+    strengths_text = "\n".join('- ' + s for s in strengths)
+    risk_text = "\n".join('- ' + r for r in risk_factors) if risk_factors else 'No significant risk factors identified.'
+    
+    assessment_result = (
+        'strong potential with manageable risk levels.' if final_score >= 7
+        else 'moderate risk with some concerns that need attention.' if final_score >= 4
+        else 'significant risk factors that require careful consideration.'
+    )
+    
+    explanation = (
+        f"Assessment Summary for {'SME' if is_sme else 'Salaried'} Applicant:\n"
+        f"Risk Level: {risk_level} (Score: {final_score:.1f}/10)\n\n"
+        f"Strengths:\n{strengths_text}\n\n"
+        f"Risk Factors:\n{risk_text}\n\n"
+        f"{'Business' if is_sme else 'Application'} shows {assessment_result}"
+    )
+
+    return explanation, final_score, f"{'Business' if is_sme else 'Personal'} risk assessment completed"
     
     business_context = "SME business" if is_sme else "Salaried professional"
     
