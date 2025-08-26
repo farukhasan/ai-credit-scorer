@@ -549,17 +549,22 @@ with tab1:
             </div>
         """, unsafe_allow_html=True)
         
-        num_guarantors = st.number_input("Number of Guarantors", min_value=0, max_value=3, value=1)
-        if num_guarantors > 0:
+        num_guarantors = st.selectbox(
+            "Number of Guarantors",
+            ["0", "1", "2", "3", "3+"],
+            index=1
+        )
+        
+        if num_guarantors != "0":
             with st.container():
                 st.markdown("""
                     <div style='background-color: white; padding: 15px; border-radius: 8px; border: 1px solid #e0e0e0;'>
                 """, unsafe_allow_html=True)
                 
                 guarantor_types = st.multiselect(
-                    "Guarantor Type",
+                    "Guarantor Type(s)",
                     ["Business Owner", "Salaried Professional", "Property Owner", "Government Employee", 
-                     "Bank Employee", "Corporate Professional", "Others"],
+                     "Bank Employee", "Corporate Professional"],
                     ["Business Owner"]
                 )
                 
@@ -577,11 +582,16 @@ with tab1:
                 st.markdown("</div>", unsafe_allow_html=True)
     
     if st.button("Assess Credit Risk", key="sme_assess"):
+        # Get input values
+        monthly_income = st.session_state.get('monthly_income', 50000)
+        family_members = 4
+        bank_trans_ratio = 0.75
+        
         # Prepare input data
         input_data = pd.DataFrame({
             'age': [35],
             'monthly_income_bdt': [monthly_income],
-            'family_members': [4],
+            'family_members': [family_members],
             'education_level': [3],
             'division': [1],
             'urban_rural': [1],
@@ -844,6 +854,10 @@ with tab2:
     if st.button("Assess Credit Risk", key="emp_assess"):
         # Similar assessment logic as SME tab
         total_income = monthly_salary + side_business_income
+        guarantor_emp = num_guarantors != "0"
+        trans_ratio_emp = 0.8  # Default transaction ratio for employed
+        default_emp = st.session_state.get('default_emp', False)
+        family_members = 4  # Default family members
         
         input_data_emp = pd.DataFrame({
             'age': [age],
